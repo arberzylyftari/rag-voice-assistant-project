@@ -4,7 +4,9 @@ Everything the caller can act on is raised as `TranscriptionError`, which
 carries the HTTP status and an Albanian message ready to show the user.
 """
 
+import difflib
 import logging
+import re
 from functools import lru_cache
 
 import openai
@@ -40,6 +42,12 @@ MESSAGES = {
     "unreachable": "Nuk u arrit lidhja me shërbimin e transkriptimit. Kontrollo internetin dhe provo sërish.",
     "failed": "Transkriptimi dështoi. Provo sërish.",
 }
+
+
+# Above this similarity to the steering prompt, a transcript is echo rather
+# than speech. Real questions share vocabulary with the prompt but score far
+# below this; measured echoes score at or near 1.0.
+PROMPT_ECHO_THRESHOLD = 0.6
 
 
 class TranscriptionError(Exception):
@@ -95,6 +103,34 @@ def validate_audio(data: bytes, content_type: str | None) -> str:
     return SUPPORTED_AUDIO_TYPES[media_type]
 
 
+def _normalise(text: str) -> str:
+    """Lowercase, strip punctuation, collapse whitespace — for comparison only."""
+    return " ".join(re.sub(r"[^\w\s]", " ", text.lower()).split())
+
+
+def is_prompt_echo(text: str, prompt: str) -> bool:
+    """True when the transcript is the steering prompt coming back.
+
+    Whisper-family models regurgitate the prompt when the audio contains no
+    speech — a pure tone or room noise yields a fluent, plausible-looking
+    sentence lifted from the prompt. Left unchecked that fabricated question
+    would flow into retrieval and get answered as though the user had asked
+    it, so it has to be caught here rather than downstream.
+    """
+    normalised_text = _normalise(text)
+    normalised_prompt = _normalise(prompt)
+
+    if not normalised_text:
+        return True
+
+    # Echoes are usually a verbatim span of the prompt.
+    if normalised_text in normalised_prompt:
+        return True
+
+    ratio = difflib.SequenceMatcher(None, normalised_text, normalised_prompt).ratio()
+    return ratio >= PROMPT_ECHO_THRESHOLD
+
+
 async def transcribe(data: bytes, content_type: str | None) -> str:
     """Transcribe Albanian speech and return the text.
 
@@ -139,6 +175,10 @@ async def transcribe(data: bytes, content_type: str | None) -> str:
     text = (result.text or "").strip()
 
     if not text:
+        raise TranscriptionError(422, MESSAGES["no_speech"])
+
+    if is_prompt_echo(text, settings.stt_prompt):
+        logger.info("Discarded a transcript that echoed the steering prompt")
         raise TranscriptionError(422, MESSAGES["no_speech"])
 
     return text
