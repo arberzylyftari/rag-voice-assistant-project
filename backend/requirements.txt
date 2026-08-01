@@ -6,3 +6,9 @@ fastapi==0.116.1
 uvicorn[standard]==0.35.0
 pydantic-settings==2.10.1
 python-dotenv==1.1.1
+
+# Multipart form parsing, required for audio file uploads.
+python-multipart==0.0.20
+
+# Speech-to-text, and later the LLM and embeddings.
+openai==2.52.0
