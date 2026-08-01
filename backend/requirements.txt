@@ -1,0 +1,8 @@
+# Backend dependencies (Python 3.13)
+# Kept intentionally minimal: STT/LLM/embeddings, TTS and vector store
+# dependencies are added in the milestones that actually introduce them.
+
+fastapi==0.116.1
+uvicorn[standard]==0.35.0
+pydantic-settings==2.10.1
+python-dotenv==1.1.1
