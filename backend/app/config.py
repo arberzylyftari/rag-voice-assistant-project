@@ -26,8 +26,8 @@ class Settings(BaseSettings):
     app_env: str = "development"
 
     # Comma-separated list of allowed browser origins.
-    # Default matches the Vite dev server.
-    cors_origins: str = "http://localhost:5173"
+    # Default matches the pinned Vite dev server port (see vite.config.ts).
+    cors_origins: str = "http://localhost:5180"
 
     # Provider credentials. Optional at this stage so the skeleton boots
     # without them; the endpoints that need them validate on use.

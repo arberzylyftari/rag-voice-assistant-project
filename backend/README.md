@@ -44,7 +44,7 @@ never exposed to the frontend.
 | Variable | Required | Description |
 | --- | --- | --- |
 | `APP_ENV` | no | `development` or `production` |
-| `CORS_ORIGINS` | no | Comma-separated allowed browser origins |
+| `CORS_ORIGINS` | no | Comma-separated allowed browser origins (defaults to the frontend dev server on port 5180) |
 | `OPENAI_API_KEY` | yes (from STT milestone) | Speech-to-text, LLM, embeddings |
 | `ELEVENLABS_API_KEY` | yes (from TTS milestone) | Text-to-speech |
 
