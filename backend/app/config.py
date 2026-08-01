@@ -37,6 +37,32 @@ class Settings(BaseSettings):
     # Local, file-based storage root (SQLite metadata + Chroma index).
     data_dir: Path = BACKEND_DIR / "data"
 
+    # --- Speech-to-text ---
+    # Switchable without code changes: set STT_MODEL=whisper-1 in .env if
+    # gpt-4o-transcribe handles Albanian accents poorly.
+    stt_model: str = "gpt-4o-transcribe"
+
+    # The transcription API rejects `language="sq"` — Albanian is not in its
+    # supported language list. A prompt written in Albanian is what steers it
+    # instead, and measured on the Day 2 fixtures it is the difference between
+    # 0.64 and 0.96 average accuracy: without it, short clips get misdetected
+    # as other languages entirely.
+    stt_prompt: str = (
+        "Kjo është një pyetje në gjuhën shqipe rreth politikave dhe procedurave "
+        "të brendshme të kompanisë, si pushimet, puna nga larg, shpenzimet dhe "
+        "mbështetja e IT-së."
+    )
+
+    # Upload ceiling, matching the transcription API's own 25 MB limit.
+    # The frontend caps recordings at 60 seconds, well under this.
+    max_audio_bytes: int = 25 * 1024 * 1024
+
+    # Audio shorter than this is silence, not speech. Mirrors the frontend
+    # check so a direct API call cannot bypass it.
+    min_audio_bytes: int = 1024
+
+    openai_timeout_seconds: float = 60.0
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse `cors_origins` into a list of origins."""
