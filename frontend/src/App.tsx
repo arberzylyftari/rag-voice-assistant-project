@@ -1,6 +1,9 @@
 import { useEffect, useState } from 'react'
 import { MicButton } from './components/MicButton'
+import { Notice } from './components/Notice'
+import { useAudioRecorder } from './hooks/useAudioRecorder'
 import { fetchHealth } from './lib/api'
+import { formatDuration } from './lib/format'
 import './App.css'
 
 type ConnectionState = 'checking' | 'online' | 'offline'
@@ -14,7 +17,8 @@ const CONNECTION_LABELS: Record<ConnectionState, string> = {
 
 export default function App() {
   const [connection, setConnection] = useState<ConnectionState>('checking')
-  const [isRecording, setIsRecording] = useState(false)
+  const { status, message, elapsedMs, recording, toggle, dismissMessage, maxDurationMs } =
+    useAudioRecorder()
 
   useEffect(() => {
     const controller = new AbortController()
@@ -28,6 +32,8 @@ export default function App() {
 
     return () => controller.abort()
   }, [])
+
+  const isRecording = status === 'recording'
 
   return (
     <div className="app">
@@ -44,21 +50,38 @@ export default function App() {
         </div>
       </header>
 
+      {message && (
+        <Notice text={message.text} tone={message.tone} onDismiss={dismissMessage} />
+      )}
+
       <main className="app__main">
-        <div className="conversation">
-          <p className="conversation__title">Ende nuk ka biseda</p>
-          <p className="conversation__hint">
-            Shtyp butonin e mikrofonit dhe bëj një pyetje, për shembull:{' '}
-            <em>„Sa ditë pushimi vjetor kam?”</em>
-          </p>
-        </div>
+        {recording ? (
+          <div className="conversation">
+            <div className="recording">
+              <p className="recording__label">
+                Pyetja juaj · {formatDuration(recording.durationMs)}
+              </p>
+              <audio className="recording__player" src={recording.url} controls />
+            </div>
+          </div>
+        ) : (
+          <div className="conversation conversation--empty">
+            <p className="conversation__title">Ende nuk ka biseda</p>
+            <p className="conversation__hint">
+              Shtyp butonin e mikrofonit dhe bëj një pyetje, për shembull:{' '}
+              <em>„Sa ditë pushimi vjetor kam?”</em>
+            </p>
+          </div>
+        )}
       </main>
 
       <footer className="app__footer">
-        <MicButton
-          isRecording={isRecording}
-          onToggle={() => setIsRecording((recording) => !recording)}
-        />
+        <MicButton isRecording={isRecording} onToggle={toggle} />
+        {isRecording && (
+          <p className="app__timer" role="timer">
+            {formatDuration(elapsedMs)} / {formatDuration(maxDurationMs)}
+          </p>
+        )}
       </footer>
     </div>
   )
