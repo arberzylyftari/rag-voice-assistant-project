@@ -72,13 +72,18 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
   gap: 0.5rem;
-  padding: 2rem 1.5rem;
-  border: 1px dashed var(--border);
+  padding: 1.25rem;
+  border: 1px solid var(--border);
   border-radius: 0.9rem;
   background: var(--surface);
+}
+
+.conversation--empty {
+  align-items: center;
+  justify-content: center;
+  padding: 2rem 1.5rem;
+  border-style: dashed;
   text-align: center;
 }
 
@@ -92,10 +97,42 @@
   font-size: 0.95rem;
 }
 
+/* --- Recorded question --- */
+
+.recording {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  align-self: flex-end;
+  max-width: 100%;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: var(--bg);
+}
+
+.recording__label {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.recording__player {
+  width: min(22rem, 100%);
+  height: 2.25rem;
+}
+
 /* --- Footer --- */
 
 .app__footer {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.6rem;
   padding-top: 0.5rem;
+}
+
+.app__timer {
+  font-variant-numeric: tabular-nums;
+  font-size: 0.85rem;
+  color: var(--text-muted);
 }
