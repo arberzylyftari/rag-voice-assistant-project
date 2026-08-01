@@ -1,52 +1,59 @@
-import './MicButton.css'
+import { Mic } from 'lucide-react'
+
+import {
+  RippleButton,
+  RippleButtonRipples,
+} from '@/components/animate-ui/components/buttons/ripple'
+import { AudioLines } from '@/components/animate-ui/icons/audio-lines'
+import { LoaderCircle } from '@/components/animate-ui/icons/loader-circle'
+
+export type MicButtonState = 'idle' | 'recording' | 'processing'
 
 interface MicButtonProps {
-  isRecording: boolean
-  disabled?: boolean
+  state: MicButtonState
   onToggle: () => void
+}
+
+/** Albanian label for each state — doubles as the accessible name. */
+const LABELS: Record<MicButtonState, string> = {
+  idle: 'Shtyp për të folur',
+  recording: 'Ndalo regjistrimin',
+  processing: 'Duke transkriptuar…',
 }
 
 /**
  * Push-to-talk control: press to start recording, press again to stop.
  *
- * This milestone renders the control and its states only — microphone
- * capture is wired up in the speech-to-text milestone.
+ * Disabled while a transcription is in flight, so a second press cannot
+ * start a new recording on top of one still being processed.
  */
-export function MicButton({ isRecording, disabled = false, onToggle }: MicButtonProps) {
-  const label = isRecording ? 'Ndalo regjistrimin' : 'Shtyp për të folur'
+export function MicButton({ state, onToggle }: MicButtonProps) {
+  const label = LABELS[state]
+  const isRecording = state === 'recording'
+  const isProcessing = state === 'processing'
 
   return (
-    <div className="mic">
-      <button
+    <div className="flex flex-col items-center gap-3">
+      <RippleButton
         type="button"
-        className={`mic__button ${isRecording ? 'mic__button--recording' : ''}`}
+        variant={isRecording ? 'destructive' : 'default'}
         onClick={onToggle}
-        disabled={disabled}
+        disabled={isProcessing}
         aria-label={label}
         aria-pressed={isRecording}
+        className="size-18 rounded-full [&_svg]:size-7"
       >
-        <MicIcon />
-      </button>
-      <span className="mic__label">{label}</span>
-    </div>
-  )
-}
+        {isProcessing ? (
+          <LoaderCircle animate loop size={28} />
+        ) : isRecording ? (
+          <AudioLines animate loop size={28} />
+        ) : (
+          <Mic />
+        )}
+        <RippleButtonRipples />
+      </RippleButton>
 
-function MicIcon() {
-  return (
-    <svg
-      className="mic__icon"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.8"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
-      <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-      <line x1="12" y1="19" x2="12" y2="22" />
-    </svg>
+      <span className="text-sm text-muted-foreground">{label}</span>
+    </div>
   )
 }
