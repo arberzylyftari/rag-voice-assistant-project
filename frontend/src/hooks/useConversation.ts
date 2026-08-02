@@ -17,7 +17,7 @@ export interface Exchange {
   answered?: boolean
   sources?: string[]
   error?: string
-  audioUrl: string
+  audioUrl?: string
   durationMs: number
 }
 
@@ -56,6 +56,22 @@ export function useConversation(recording: AudioRecording | null) {
       current.map((exchange) => (exchange.id === id ? { ...exchange, ...patch } : exchange)),
     )
   }, [])
+
+  /**
+   * Free the recordings of the conversation being left.
+   *
+   * The recorder creates these URLs but no longer owns them — the conversation
+   * decides how long they are needed, which is until it is cleared.
+   */
+  const releaseAudio = useCallback(() => {
+    for (const exchange of exchangesRef.current) {
+      if (exchange.audioUrl) URL.revokeObjectURL(exchange.audioUrl)
+    }
+  }, [])
+
+  useEffect(() => {
+    return () => releaseAudio()
+  }, [releaseAudio])
 
   useEffect(() => {
     if (!recording) return
@@ -127,8 +143,9 @@ export function useConversation(recording: AudioRecording | null) {
 
   const reset = useCallback(() => {
     controllerRef.current?.abort()
+    releaseAudio()
     setExchanges([])
-  }, [])
+  }, [releaseAudio])
 
   return { exchanges, isBusy, reset }
 }

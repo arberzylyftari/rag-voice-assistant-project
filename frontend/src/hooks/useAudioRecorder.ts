@@ -8,7 +8,11 @@ export interface AudioRecording {
   blob: Blob
   mimeType: string
   durationMs: number
-  /** Object URL for playback. Revoked when the next recording replaces it. */
+  /**
+   * Object URL for playback. Revoking is left to whoever renders it — the
+   * recorder used to revoke the previous URL on every new recording, which
+   * left every earlier turn in the conversation pointing at a freed resource.
+   */
   url: string
 }
 
@@ -88,7 +92,6 @@ export function useAudioRecorder() {
   const startedAtRef = useRef(0)
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const autoStopRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const previousUrlRef = useRef<string | null>(null)
 
   const releaseStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop())
@@ -102,10 +105,7 @@ export function useAudioRecorder() {
   }, [])
 
   useEffect(() => {
-    return () => {
-      releaseStream()
-      if (previousUrlRef.current) URL.revokeObjectURL(previousUrlRef.current)
-    }
+    return () => releaseStream()
   }, [releaseStream])
 
   const stop = useCallback(() => {
@@ -184,11 +184,7 @@ export function useAudioRecorder() {
           // valid recording. The backend still screens the transcript.
         }
 
-        if (previousUrlRef.current) URL.revokeObjectURL(previousUrlRef.current)
-        const url = URL.createObjectURL(blob)
-        previousUrlRef.current = url
-
-        setRecording({ blob, mimeType, durationMs, url })
+        setRecording({ blob, mimeType, durationMs, url: URL.createObjectURL(blob) })
       })()
     }
 
