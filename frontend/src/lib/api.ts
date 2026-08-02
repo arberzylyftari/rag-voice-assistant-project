@@ -68,6 +68,54 @@ export async function fetchHealth(signal?: AbortSignal): Promise<HealthResponse>
   return (await response.json()) as HealthResponse
 }
 
+export interface ConversationTurn {
+  role: 'user' | 'assistant'
+  content: string
+}
+
+export interface AnswerResponse {
+  question: string
+  resolved_question: string
+  answer: string
+  answered: boolean
+  sources: string[]
+  model: string
+}
+
+/**
+ * Ask a question, optionally against earlier turns.
+ *
+ * History lets the backend resolve a follow-up into a standalone question; it
+ * is never used as a source of facts.
+ */
+export async function answerQuestion(
+  question: string,
+  history: ConversationTurn[],
+  signal?: AbortSignal,
+): Promise<AnswerResponse> {
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE_URL}/answer`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, history }),
+      signal,
+    })
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') throw error
+    throw new ApiError(
+      'Nuk u arrit lidhja me serverin. Kontrollo internetin dhe provo serish.',
+      0,
+    )
+  }
+
+  if (!response.ok) {
+    throw new ApiError(await readErrorMessage(response), response.status)
+  }
+
+  return (await response.json()) as AnswerResponse
+}
+
 /** Send a recording for transcription. Throws `ApiError` on failure. */
 export async function transcribeAudio(
   blob: Blob,
