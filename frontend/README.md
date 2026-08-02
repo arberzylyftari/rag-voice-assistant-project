@@ -31,10 +31,11 @@ cp .env.example .env   # adjust VITE_API_BASE_URL if the backend is elsewhere
 ## Run
 
 ```bash
-npm run dev      # dev server on http://localhost:5180
-npm run build    # type-check and production build
-npm run lint     # oxlint
-npm run preview  # serve the production build locally
+npm run dev       # dev server on http://localhost:5180
+npm run build     # type-check and production build
+npm run lint      # oxlint
+npm run test:e2e  # Playwright browser tests
+npm run preview   # serve the production build locally
 ```
 
 The backend must be running and its Knowledge Base index must be built before
@@ -100,6 +101,60 @@ matters: the recorder previously revoked the previous URL each time it made a
 new one, while the conversation went on rendering an `<audio>` element for
 every earlier turn — so every question but the newest pointed at a freed
 resource.
+
+## Tests
+
+```bash
+npx playwright install chromium   # once
+npm run test:e2e                  # 44 tests
+npm run test:e2e:ui               # watch mode, for writing them
+```
+
+**The backend is stubbed at the network boundary in every spec**, so the suite
+needs no API key, makes no provider calls and costs nothing — the same
+property the backend's `pytest` suite has. What is under test is the
+interface: what it renders, what it sends, and how it behaves when a request
+fails. The dev server is started by Playwright, or reused if one is already
+running.
+
+| File | Covers |
+| --- | --- |
+| [conversation.spec.ts](e2e/conversation.spec.ts) | Record → transcribe → answer, sources, follow-up history, resolved questions, refusal styling, speech |
+| [history.spec.ts](e2e/history.spec.ts) | Saving, titles, reload, reopening, deletion, recency groups, unreadable storage |
+| [recording.spec.ts](e2e/recording.spec.ts) | Microphone errors, the silence gate, the timer |
+| [errors.spec.ts](e2e/errors.spec.ts) | Backend failures on each route, and recovery |
+| [admin.spec.ts](e2e/admin.spec.ts) | Token gate, listing, upload, deletion, sign-out |
+| [theme.spec.ts](e2e/theme.spec.ts) | System preference, stored choice, pre-paint application |
+
+### Writing more of them
+
+Things that cost time to work out the first time:
+
+- **Both fake-media flags are required.** `--use-fake-device-for-media-stream`
+  alone leaves `getUserMedia` failing with `NotSupportedError`; it needs
+  `--use-fake-ui-for-media-stream` too. Both are in
+  [playwright.config.ts](playwright.config.ts).
+- **A denied microphone cannot be tested by withholding the permission**,
+  because that second flag auto-accepts every prompt. Reject at
+  `navigator.mediaDevices.getUserMedia` instead — the mapping from
+  `error.name` to an Albanian message is the thing worth testing anyway.
+- **Answers are revealed by `TypingText`**, so an assertion made the moment a
+  bubble appears reads a partial string. `settle()` polls until the text stops
+  growing.
+- **Scope text assertions to the chat region.** A saved conversation's title
+  repeats its opening question in the sidebar, so an unscoped `getByText` for
+  a question matches twice. Same trap on the admin page, where the success
+  notice repeats the document title.
+- **The chat panel is itself a `[data-slot="card"]`**, so bubbles are
+  `[data-slot="card"] [data-slot="card"]`.
+- **The mic button's accessible name changes with its state.** Find it with
+  `button[aria-pressed]`.
+- **Radix dialogs animate out and stay mounted while they do.** Cancelling and
+  immediately reopening one can land the second interaction on the closing
+  copy, whose state is already cleared. Wait for it to be hidden, or split the
+  test.
+- A recording under 700 ms is discarded as silence before it is ever uploaded,
+  so `ask()` records for longer than that.
 
 ## Dev server port
 
