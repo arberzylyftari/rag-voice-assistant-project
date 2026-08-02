@@ -116,6 +116,28 @@ export async function answerQuestion(
   return (await response.json()) as AnswerResponse
 }
 
+/** Render Albanian text as speech. Returns MP3 audio. */
+export async function speakText(text: string, signal?: AbortSignal): Promise<Blob> {
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE_URL}/speak`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text }),
+      signal,
+    })
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') throw error
+    throw new ApiError('Nuk u arrit lidhja me serverin.', 0)
+  }
+
+  if (!response.ok) {
+    throw new ApiError(await readErrorMessage(response), response.status)
+  }
+
+  return await response.blob()
+}
+
 /** Send a recording for transcription. Throws `ApiError` on failure. */
 export async function transcribeAudio(
   blob: Blob,
