@@ -147,6 +147,33 @@ curl -X POST http://localhost:8000/answer \
 A refusal is a **successful** response — `answered` is `false` and `answer`
 carries the Albanian message. Only a provider failure returns `503`.
 
+#### Follow-up questions
+
+Pass the earlier turns and a follow-up resolves against them:
+
+```json
+{
+  "question": "Po pas pesë vjetësh?",
+  "history": [
+    { "role": "user", "content": "Sa ditë pushimi vjetor kam?" },
+    { "role": "assistant", "content": "21 ditë pune në vit…" }
+  ]
+}
+```
+
+`resolved_question` comes back as
+`Sa ditë pushimi vjetor kam pas pesë vjetësh punë?` — what retrieval actually
+ran on.
+
+**History resolves the question; it never answers it.** Retrieval and
+generation both run on the resolved form, so no fact carries over from an
+earlier turn without being fetched again for this one. Without the rewrite the
+alternative would be feeding earlier answers to the model as context, which is
+exactly the leak the grounding rules exist to prevent.
+
+History is supplied by the caller rather than held server-side, so the API
+stays stateless — no session store, no expiry.
+
 ## The three guardrail layers
 
 Each layer catches something the others cannot, and none is sufficient alone.
@@ -190,6 +217,7 @@ never exposed to the frontend.
 | `ELEVENLABS_API_KEY` | yes (from TTS milestone) | Text-to-speech |
 | `STT_MODEL` | no | Defaults to `gpt-4o-transcribe`; set to `whisper-1` to fall back |
 | `ANSWER_MODEL` | no | Defaults to `gpt-4o` |
+| `REWRITE_MODEL` | no | Follow-up resolution; defaults to `gpt-4o-mini` |
 
 ## Layout
 
@@ -203,6 +231,7 @@ backend/
 │   ├── services/
 │   │   ├── chunking.py        # heading-aware document splitting
 │   │   ├── embeddings.py      # text-embedding-3-small
+│   │   ├── followup.py        # resolves a follow-up into a standalone question
 │   │   ├── generation.py      # grounded answers + citation verification
 │   │   ├── indexing.py        # embed stored chunks into the vector index
 │   │   ├── ingestion.py       # read, chunk, store
