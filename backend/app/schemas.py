@@ -12,6 +12,28 @@ class TranscriptionResponse(BaseModel):
     model: str = Field(description="Speech-to-text model that produced it.")
 
 
+class DocumentResponse(BaseModel):
+    """A Knowledge Base document as the admin panel sees it."""
+
+    id: int
+    filename: str
+    title: str
+    version: str | None = None
+    owner: str | None = None
+    chunk_count: int
+    indexed: bool = Field(
+        description="False when the document is stored but not yet searchable."
+    )
+    updated_at: str
+
+
+class UploadResponse(BaseModel):
+    """The result of adding a document."""
+
+    document: DocumentResponse
+    chunk_count: int
+
+
 class SearchRequest(BaseModel):
     """A Knowledge Base query."""
 
