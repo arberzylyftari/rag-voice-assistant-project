@@ -6,6 +6,7 @@ from fastapi import APIRouter, HTTPException
 
 from app.schemas import AnswerRequest, AnswerResponse
 from app.services.embeddings import EmbeddingError
+from app.services.followup import resolve_question
 from app.services.generation import GenerationError, generate_answer
 from app.services.retrieval import retrieve
 
@@ -24,23 +25,29 @@ async def answer_question(request: AnswerRequest) -> AnswerResponse:
     question = request.question.strip()
 
     try:
-        retrieval = await retrieve(question)
-        result = await generate_answer(question, retrieval.hits)
+        # History only resolves what the question refers to. Retrieval and the
+        # answer both run on the resolved form, so no fact survives from an
+        # earlier turn without being fetched again for this one.
+        resolved = await resolve_question(question, request.history)
+        retrieval = await retrieve(resolved)
+        result = await generate_answer(resolved, retrieval.hits)
     except EmbeddingError as error:
         raise HTTPException(status_code=503, detail=error.message) from None
     except GenerationError as error:
         raise HTTPException(status_code=503, detail=error.message) from None
 
     logger.info(
-        "Answered=%s hits=%d best=%.3f question=%r",
+        "Answered=%s hits=%d best=%.3f turns=%d question=%r",
         result.answered,
         len(retrieval.hits),
         retrieval.best_score,
-        question[:80],
+        len(request.history),
+        resolved[:80],
     )
 
     return AnswerResponse(
         question=question,
+        resolved_question=resolved,
         answer=result.answer,
         answered=result.answered,
         sources=result.citations,

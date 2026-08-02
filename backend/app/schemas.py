@@ -2,6 +2,8 @@
 
 from pydantic import BaseModel, Field
 
+from app.services.followup import Turn
+
 
 class TranscriptionResponse(BaseModel):
     """A transcribed voice question."""
@@ -30,12 +32,27 @@ class AnswerRequest(BaseModel):
     """A question to answer from the Knowledge Base."""
 
     question: str = Field(min_length=1, max_length=1000, description="The question, in Albanian.")
+    history: list[Turn] = Field(
+        default_factory=list,
+        max_length=40,
+        description=(
+            "Earlier turns in this conversation, oldest first. Used only to "
+            "resolve a follow-up into a standalone question — never as a "
+            "source of facts."
+        ),
+    )
 
 
 class AnswerResponse(BaseModel):
     """A grounded answer, or a refusal."""
 
     question: str
+    resolved_question: str = Field(
+        description=(
+            "The question after follow-up resolution — what retrieval "
+            "actually ran on. Equal to `question` when nothing was rewritten."
+        )
+    )
     answer: str = Field(description="The answer in Albanian, or the refusal message.")
     answered: bool = Field(
         description="False when the Knowledge Base does not support an answer."
