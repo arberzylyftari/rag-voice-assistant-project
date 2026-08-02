@@ -7,12 +7,11 @@ carries the HTTP status and an Albanian message ready to show the user.
 import difflib
 import logging
 import re
-from functools import lru_cache
 
 import openai
-from openai import AsyncOpenAI
 
 from app.config import get_settings
+from app.services.openai_client import OpenAINotConfigured, get_client
 
 logger = logging.getLogger(__name__)
 
@@ -57,20 +56,6 @@ class TranscriptionError(Exception):
         super().__init__(message)
         self.status_code = status_code
         self.message = message
-
-
-@lru_cache
-def get_client() -> AsyncOpenAI:
-    """Return the cached OpenAI client."""
-    settings = get_settings()
-
-    if not settings.openai_api_key:
-        raise TranscriptionError(503, MESSAGES["not_configured"])
-
-    return AsyncOpenAI(
-        api_key=settings.openai_api_key,
-        timeout=settings.openai_timeout_seconds,
-    )
 
 
 def normalise_content_type(content_type: str | None) -> str:
@@ -138,7 +123,11 @@ async def transcribe(data: bytes, content_type: str | None) -> str:
     """
     settings = get_settings()
     extension = validate_audio(data, content_type)
-    client = get_client()
+
+    try:
+        client = get_client()
+    except OpenAINotConfigured:
+        raise TranscriptionError(503, MESSAGES["not_configured"]) from None
 
     try:
         result = await client.audio.transcriptions.create(

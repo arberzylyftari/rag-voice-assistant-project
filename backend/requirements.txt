@@ -10,5 +10,8 @@ python-dotenv==1.1.1
 # Multipart form parsing, required for audio file uploads.
 python-multipart==0.0.20
 
-# Speech-to-text, and later the LLM and embeddings.
+# Speech-to-text, embeddings, and later the LLM.
 openai==2.52.0
+
+# Vector store for retrieval. File-based, embedded in this process.
+chromadb==1.5.9

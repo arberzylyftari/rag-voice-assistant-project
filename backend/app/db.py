@@ -21,6 +21,9 @@ CREATE TABLE IF NOT EXISTS documents (
     owner        TEXT,
     -- Hash of the source text, so an unchanged document is not re-embedded.
     checksum     TEXT    NOT NULL,
+    -- The checksum that was last embedded into the vector index. Lagging
+    -- behind `checksum` means the document is ingested but not yet indexed.
+    indexed_checksum TEXT,
     chunk_count  INTEGER NOT NULL DEFAULT 0,
     created_at   TEXT    NOT NULL DEFAULT (datetime('now')),
     updated_at   TEXT    NOT NULL DEFAULT (datetime('now'))
@@ -66,7 +69,22 @@ def transaction() -> Iterator[sqlite3.Connection]:
         connection.close()
 
 
+# Columns added after the first release, applied to databases created before
+# them. SQLite has no `ADD COLUMN IF NOT EXISTS`, so they are checked by name.
+MIGRATIONS: dict[str, list[tuple[str, str]]] = {
+    "documents": [("indexed_checksum", "ALTER TABLE documents ADD COLUMN indexed_checksum TEXT")],
+}
+
+
 def initialise() -> None:
-    """Create the schema if it does not exist yet."""
+    """Create the schema, then apply any columns added since it was written."""
     with transaction() as connection:
         connection.executescript(SCHEMA)
+
+        for table, columns in MIGRATIONS.items():
+            existing = {
+                row["name"] for row in connection.execute(f"PRAGMA table_info({table})")
+            }
+            for name, statement in columns:
+                if name not in existing:
+                    connection.execute(statement)
