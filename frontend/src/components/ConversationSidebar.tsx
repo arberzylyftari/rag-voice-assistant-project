@@ -116,10 +116,16 @@ export function ConversationSidebar({
                     {group.map((conversation) => (
                       <SidebarMenuItem key={conversation.id}>
                         <SidebarMenuButton
+                          className="pr-7"
                           isActive={conversation.id === activeId}
                           onClick={() => onOpen(conversation.id)}
                           disabled={disabled}
-                          tooltip={conversation.title}
+                          // A native title rather than the menu button's
+                          // tooltip prop: that renders a Radix tooltip, which
+                          // needs a provider this app does not mount, and it
+                          // would be unreachable anyway once an offcanvas
+                          // sidebar has slid the button off the screen.
+                          title={conversation.title}
                         >
                           <MessageSquare />
                           <span className="truncate">{conversation.title}</span>
