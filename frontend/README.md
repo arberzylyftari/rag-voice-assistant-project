@@ -90,12 +90,15 @@ frontend/
 │   │   ├── AnswerBubble.tsx  # answer + collapsible sources
 │   │   ├── Conversation.tsx  # the exchanges so far
 │   │   ├── MicButton.tsx     # push-to-talk control
+│   │   ├── ThemeProvider.tsx # theme state + wipe transition
+│   │   ├── ThemeToggle.tsx
 │   │   ├── Notice.tsx        # error and status banner
 │   │   └── QuestionBubble.tsx
 │   ├── hooks/
 │   │   ├── useAudioRecorder.ts
 │   │   ├── useConversation.ts
 │   │   ├── useAdminToken.ts
+│   │   ├── useTheme.ts
 │   │   └── useSpeech.ts
 │   ├── lib/
 │   │   ├── api.ts            # backend client
@@ -105,6 +108,22 @@ frontend/
 ├── vite.config.ts
 └── .env.example
 ```
+
+## Theme
+
+Light and dark, resolved from a stored choice and falling back to the system
+preference. An inline script in `index.html` applies the class before first
+paint, so a reload never flashes the wrong theme.
+
+Switching runs a wipe: a full-viewport panel sweeps across, and the theme
+swaps only once it covers everything, so the change itself is never visible —
+black left-to-right going dark, white right-to-left coming back. The panel is
+`pointer-events-none` throughout and sits above dialogs and fixed elements.
+`prefers-reduced-motion` skips it and swaps instantly.
+
+Lives in [ThemeProvider.tsx](src/components/ThemeProvider.tsx) and
+[lib/theme.ts](src/lib/theme.ts); the button is
+[ThemeToggle.tsx](src/components/ThemeToggle.tsx).
 
 ## Admin panel
 
