@@ -92,6 +92,38 @@ detected; `503`/`504` provider unavailable or timed out.
 transcription API rejects the `sq` code. See `stt_prompt` in
 [app/config.py](app/config.py); removing it drops accuracy sharply.
 
+### `POST /search`
+
+Searches the Knowledge Base and applies the relevance gate.
+
+```bash
+curl -X POST http://localhost:8000/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "Sa ditë pushimi vjetor kam?", "limit": 3}'
+```
+
+```json
+{
+  "query": "Sa ditë pushimi vjetor kam?",
+  "relevant": true,
+  "best_score": 0.826,
+  "documents": ["Pyetje të Shpeshta", "Politika e Pushimeve dhe e Lejeve"],
+  "hits": [{ "document_title": "…", "heading": "…", "text": "…", "score": 0.826 }]
+}
+```
+
+`relevant` is `false` with an empty `hits` list when nothing in the corpus was
+close enough. `best_score` is the best similarity *before* filtering, so a
+near-miss is distinguishable from a query that matched nothing at all.
+
+**The gate is one layer, not the whole guardrail.** It decides whether
+anything is worth reading, not whether the question can be answered — some
+out-of-scope questions land close enough to pass and are refused later, by the
+grounding step. The threshold in
+[app/services/retrieval.py](app/services/retrieval.py) is measured against a
+set of in-scope and out-of-scope Albanian questions; the comment there records
+what moving it costs.
+
 ## Environment variables
 
 See [.env.example](.env.example). Secrets are read on the backend only and are
@@ -111,6 +143,7 @@ never exposed to the frontend.
 backend/
 ├── app/
 │   ├── routers/
+│   │   ├── search.py          # POST /search
 │   │   └── transcription.py   # POST /transcribe
 │   ├── services/
 │   │   ├── chunking.py        # heading-aware document splitting
@@ -118,6 +151,7 @@ backend/
 │   │   ├── indexing.py        # embed stored chunks into the vector index
 │   │   ├── ingestion.py       # read, chunk, store
 │   │   ├── openai_client.py   # shared provider client
+│   │   ├── retrieval.py       # semantic search + relevance gate
 │   │   ├── transcription.py   # speech-to-text
 │   │   └── vector_store.py    # ChromaDB
 │   ├── config.py              # environment-driven settings
