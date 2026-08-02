@@ -38,7 +38,22 @@ npm run preview  # serve the production build locally
 ```
 
 The backend must be running for the connection indicator in the header to
-report `Lidhur me serverin`. See [../backend/README.md](../backend/README.md).
+report `Lidhur me serverin`, and its Knowledge Base index must be built before
+questions can be answered. See [../backend/README.md](../backend/README.md).
+
+## The conversation loop
+
+Pressing the microphone records a question; the recording is transcribed, the
+transcript is answered from the Knowledge Base, and the answer appears with the
+passages it came from.
+
+Follow-ups work: the completed exchanges are sent with each question so the
+backend can resolve `Po pas pesë vjetësh?` into a standalone question. The
+resolved form is shown above the answer whenever it differs, so an answer that
+mentions five years' service is traceable to what was actually asked.
+
+A refusal is styled apart from an answer — muted, italic, no sources — because
+"we do not cover this" should not read like a finding.
 
 ## Dev server port
 
@@ -63,12 +78,14 @@ frontend/
 │   ├── components/
 │   │   ├── ui/               # shadcn/ui components
 │   │   ├── animate-ui/       # Animate UI components
+│   │   ├── AnswerBubble.tsx  # answer + collapsible sources
+│   │   ├── Conversation.tsx  # the exchanges so far
 │   │   ├── MicButton.tsx     # push-to-talk control
 │   │   ├── Notice.tsx        # error and status banner
 │   │   └── QuestionBubble.tsx
 │   ├── hooks/
 │   │   ├── useAudioRecorder.ts
-│   │   └── useTranscription.ts
+│   │   └── useConversation.ts
 │   ├── lib/
 │   │   ├── api.ts            # backend client
 │   │   └── loudness.ts       # silence detection
