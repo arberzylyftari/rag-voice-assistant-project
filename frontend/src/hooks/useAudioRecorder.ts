@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
+import { isSilent, measureLoudness } from '@/lib/loudness'
+
 export type RecorderStatus = 'idle' | 'recording'
 
 export interface AudioRecording {
@@ -170,11 +172,24 @@ export function useAudioRecorder() {
         return
       }
 
-      if (previousUrlRef.current) URL.revokeObjectURL(previousUrlRef.current)
-      const url = URL.createObjectURL(blob)
-      previousUrlRef.current = url
+      void (async () => {
+        try {
+          if (isSilent(await measureLoudness(blob))) {
+            setMessage({ text: MESSAGES.empty, tone: 'error' })
+            return
+          }
+        } catch {
+          // A container this browser records but cannot decode is not
+          // evidence of silence, so let it through rather than blocking a
+          // valid recording. The backend still screens the transcript.
+        }
 
-      setRecording({ blob, mimeType, durationMs, url })
+        if (previousUrlRef.current) URL.revokeObjectURL(previousUrlRef.current)
+        const url = URL.createObjectURL(blob)
+        previousUrlRef.current = url
+
+        setRecording({ blob, mimeType, durationMs, url })
+      })()
     }
 
     recorder.start()
