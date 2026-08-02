@@ -87,6 +87,13 @@ class Settings(BaseSettings):
     # that latency off the critical path.
     rewrite_model: str = "gpt-4o-mini"
 
+    # --- Admin ---
+    # Shared secret for the document endpoints, sent as X-Admin-Token. Empty
+    # disables them entirely rather than leaving them open: a deployed demo
+    # with unauthenticated upload and delete is worse than one without an
+    # admin panel.
+    admin_token: str = ""
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse `cors_origins` into a list of origins."""
