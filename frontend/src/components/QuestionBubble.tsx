@@ -11,7 +11,7 @@ interface QuestionBubbleProps {
 /** The user's turn: their question, with the recording still playable. */
 export function QuestionBubble({ text, durationMs, audioUrl }: QuestionBubbleProps) {
   return (
-    <Card className="ml-auto max-w-[85%] bg-secondary py-0">
+    <Card className="ml-auto max-w-[min(85%,38rem)] bg-secondary py-0">
       <CardContent className="flex flex-col gap-3 p-4">
         {text ? (
           <p className="text-[0.95rem] leading-relaxed">{text}</p>

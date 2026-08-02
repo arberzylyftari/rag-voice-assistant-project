@@ -26,7 +26,7 @@ export function Conversation({ exchanges }: ConversationProps) {
         <p className="font-medium">Ende nuk ka biseda</p>
         <p className="max-w-lg text-sm text-muted-foreground">
           Shtyp butonin e mikrofonit dhe bej nje pyetje, per shembull:{' '}
-          <em>„Sa dite pushimi vjetor kam?”</em>
+          <em>"Sa dite pushimi vjetor kam?"</em>
         </p>
       </div>
     )

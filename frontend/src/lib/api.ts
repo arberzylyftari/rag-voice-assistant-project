@@ -8,13 +8,6 @@
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8000'
 
-export interface HealthResponse {
-  status: string
-  service: string
-  version: string
-  environment: string
-}
-
 export interface TranscriptionResponse {
   text: string
   model: string
@@ -55,17 +48,6 @@ async function readErrorMessage(response: Response): Promise<string> {
   }
 
   return GENERIC_ERROR
-}
-
-/** Call the backend health endpoint. Throws if the backend is unreachable. */
-export async function fetchHealth(signal?: AbortSignal): Promise<HealthResponse> {
-  const response = await fetch(`${API_BASE_URL}/health`, { signal })
-
-  if (!response.ok) {
-    throw new Error(`Health check failed with status ${response.status}`)
-  }
-
-  return (await response.json()) as HealthResponse
 }
 
 export interface ConversationTurn {

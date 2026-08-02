@@ -106,7 +106,7 @@ export function DocumentTable({ documents, onDelete, disabled = false }: Documen
           <AlertDialogHeader>
             <AlertDialogTitle>Te fshihet dokumenti?</AlertDialogTitle>
             <AlertDialogDescription>
-              „{pending?.title}" do te hiqet nga baza e njohurive. Asistenti nuk do t'u
+              "{pending?.title}" do te hiqet nga baza e njohurive. Asistenti nuk do t'u
               pergjigjet me pyetjeve qe mbeshteten te ky dokument. Veprimi nuk kthehet mbrapsht.
             </AlertDialogDescription>
           </AlertDialogHeader>
