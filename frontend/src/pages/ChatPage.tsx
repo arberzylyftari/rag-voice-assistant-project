@@ -1,53 +1,20 @@
-import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { RotateCcw, Settings } from 'lucide-react'
-
-import { ThemeToggle } from '@/components/ThemeToggle'
 
 import { Conversation } from '@/components/Conversation'
 import { MicButton } from '@/components/MicButton'
 import { Notice } from '@/components/Notice'
-import { Badge } from '@/components/ui/badge'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAudioRecorder } from '@/hooks/useAudioRecorder'
 import { useConversation } from '@/hooks/useConversation'
-import { fetchHealth } from '@/lib/api'
 import { formatDuration } from '@/lib/format'
 
-type ConnectionState = 'checking' | 'online' | 'offline'
-
-/** Albanian status text shown next to the connection indicator. */
-const CONNECTION_LABELS: Record<ConnectionState, string> = {
-  checking: 'Duke u lidhur me serverin…',
-  online: 'Lidhur me serverin',
-  offline: 'Serveri nuk pergjigjet',
-}
-
-const DOT_COLOURS: Record<ConnectionState, string> = {
-  checking: 'bg-muted-foreground',
-  online: 'bg-emerald-500',
-  offline: 'bg-destructive',
-}
-
 export default function ChatPage() {
-  const [connection, setConnection] = useState<ConnectionState>('checking')
   const { status, message, elapsedMs, recording, toggle, dismissMessage, maxDurationMs } =
     useAudioRecorder()
   const { exchanges, isBusy, reset } = useConversation(recording)
-
-  useEffect(() => {
-    const controller = new AbortController()
-
-    fetchHealth(controller.signal)
-      .then(() => setConnection('online'))
-      .catch((cause: unknown) => {
-        if (cause instanceof Error && cause.name === 'AbortError') return
-        setConnection('offline')
-      })
-
-    return () => controller.abort()
-  }, [])
 
   const isRecording = status === 'recording'
   const micState = isRecording ? 'recording' : isBusy ? 'processing' : 'idle'
@@ -74,13 +41,6 @@ export default function ChatPage() {
               <Settings />
             </Link>
           </Button>
-          <Badge variant="outline" className="gap-2 py-1.5">
-            <span
-              className={`size-2 rounded-full ${DOT_COLOURS[connection]}`}
-              aria-hidden="true"
-            />
-            {CONNECTION_LABELS[connection]}
-          </Badge>
         </div>
       </header>
 
