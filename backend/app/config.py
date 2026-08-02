@@ -87,6 +87,14 @@ class Settings(BaseSettings):
     # that latency off the critical path.
     rewrite_model: str = "gpt-4o-mini"
 
+    # --- Text-to-speech ---
+    tts_model: str = "gpt-4o-mini-tts"
+
+    # alloy, shimmer and fable all round-tripped Albanian at 1.000 fidelity;
+    # onyx was worst at 0.964, misreading "21" as "20 e mijë". alloy is the
+    # most neutral of the three for a business assistant.
+    tts_voice: str = "alloy"
+
     # --- Admin ---
     # Shared secret for the document endpoints, sent as X-Admin-Token. Empty
     # disables them entirely rather than leaving them open: a deployed demo

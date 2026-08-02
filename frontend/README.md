@@ -55,6 +55,11 @@ mentions five years' service is traceable to what was actually asked.
 A refusal is styled apart from an answer — muted, italic, no sources — because
 "we do not cover this" should not read like a finding.
 
+The newest answer reads itself aloud on arrival; every answer keeps a play
+control. Audio is fetched once and reused, so replaying costs nothing. Autoplay
+is attempted but never assumed — browsers block it without a prior gesture, and
+a blocked attempt leaves the control ready to press.
+
 ## Dev server port
 
 The dev server is pinned to **5180** with `strictPort: true`. This port is
@@ -85,7 +90,8 @@ frontend/
 │   │   └── QuestionBubble.tsx
 │   ├── hooks/
 │   │   ├── useAudioRecorder.ts
-│   │   └── useConversation.ts
+│   │   ├── useConversation.ts
+│   │   └── useSpeech.ts
 │   ├── lib/
 │   │   ├── api.ts            # backend client
 │   │   └── loudness.ts       # silence detection
