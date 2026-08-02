@@ -160,7 +160,7 @@ LAN address does not.
 ### Tests
 
 ```bash
-cd backend && pytest         # 110 tests, providers stubbed, no API calls
+cd backend && pytest         # 127 tests, providers stubbed, no API calls
 npm run build --prefix frontend
 npm run lint --prefix frontend
 ```
@@ -188,18 +188,37 @@ The full question sets are in
 
 ## Measured results
 
-Everything below was measured, not estimated. The evaluation sets are small —
-see the caveat under [Known limitations](#known-limitations).
+Everything below was measured, not estimated. The speech numbers run over 475
+clips; the answer-quality sets are much smaller — see the caveat under
+[Known limitations](#known-limitations).
 
 | | Result |
 | --- | --- |
 | In-scope questions answered correctly | 8/8 |
 | False premises corrected | 3/3 |
 | Out-of-scope questions refused | 6/6 |
-| Albanian STT accuracy, with the Albanian prompt | 0.96 |
-| Albanian STT accuracy, without it | 0.64 |
+| Albanian STT on real human speech, WER | 0.244 |
+| Albanian STT on real human speech, without the prompt | 0.354 |
 | TTS round-trip fidelity | 0.96–0.99 |
 | Corpus | 7 documents, 85 chunks |
+
+**Speech-to-text is measured against real recordings**, not synthetic ones:
+the 475-clip Albanian test split of Mozilla Common Voice 17.0, reproducible
+with `python backend/scripts/evaluate_stt.py --limit 475`.
+
+| | WER | CER | Mean similarity |
+| --- | --- | --- | --- |
+| With the Albanian prompt | 0.244 | 0.095 | 0.914 |
+| Without any prompt | 0.354 | 0.166 | 0.808 |
+
+This **corrected an earlier claim**. The project previously recorded 0.96
+accuracy with the prompt against 0.64 without, from five synthetic fixtures.
+On real speech the accuracy is lower (0.914) and the prompt's benefit is about
+a third of what those fixtures implied. The prompt is still load-bearing —
+without it, short clips come back transcribed in Cyrillic — but the size of
+its effect was an artefact of the test method. See
+[backend/README.md](backend/README.md#accuracy-on-real-speech) for the
+breakdown by utterance length and the measured fabrication rate.
 
 **Relevance threshold.** Measured over 24 in-scope and 12 out-of-scope
 questions:
@@ -245,28 +264,39 @@ is steered by an Albanian-language prompt instead, which is the difference
 between 0.64 and 0.96 accuracy — without it, short clips get misdetected as
 entirely different languages.
 
-**The STT accuracy figure comes from synthetic speech.** The fixtures were
-generated with OpenAI TTS, which does not officially support Albanian, so some
-of the residual error is the synthetic pronunciation rather than the
-transcriber. **Real human Albanian speech has not been evaluated
-systematically.** Accents and dialect should be expected to perform worse than
-0.96.
+**Roughly one word in four is transcribed wrong.** WER is 0.244 over real
+speech. Most of that lands on very short utterances — 0.577 on one-to-two-word
+clips against 0.213 on clips of eight words or more — so a spoken question
+fares better than the headline number suggests. It is still the weakest link
+in the chain, and a misheard question can produce a confidently wrong retrieval.
 
-**Transcription invents speech from silence.** Given wordless audio it does not
-return an empty string — it produces a fluent, plausible question, sometimes a
-brand-new one that would pass retrieval and receive a cited answer as if it had
-been asked. Two defences exist: a browser-side energy gate that refuses to
-upload silence, and a backend filter for transcripts echoing the prompt. The
-energy gate is the primary one, so **a direct API call bypasses it.**
+**The evaluation corpus is read speech, not spontaneous questions.** Common
+Voice contributors read prepared general-domain sentences. Real users ask
+unprepared questions about company policy, in a vocabulary the steering prompt
+is tuned for and the corpus does not contain. The numbers are a much better
+estimate than the synthetic fixtures they replaced, but they are not measured
+on the target distribution. Accent and dialect coverage is whatever the 155
+contributors represent, and is not broken out.
+
+**Transcription invents speech, and the steering prompt makes it worse.** Given
+audio it cannot make out, the model does not return an empty string — it
+produces a fluent, plausible phrase, drawn from the prompt's vocabulary.
+Measured: 1.1% of real clips came back fluent but unrelated to what was said,
+and the prompt-echo filter caught only 0.2%, because these are new inventions
+rather than quotations. A fabricated in-domain question would pass retrieval
+and receive a cited answer as though it had been asked. The primary defence is
+a browser-side energy gate that refuses to upload silence at all, so **a direct
+API call bypasses it.**
 
 **The relevance threshold is calibrated to this corpus.** 0.75 was measured
 against 85 chunks. It is not a universal constant and should be re-measured if
 the corpus grows substantially.
 
-**The evaluation sets are small.** 8 in-scope, 3 false-premise and 6
-out-of-scope questions for the end-to-end results; 24 and 12 for the threshold.
-These are indicative and were enough to make specific decisions, but they are
-not a statistically robust benchmark.
+**The answer-quality evaluation sets are small.** 8 in-scope, 3 false-premise
+and 6 out-of-scope questions for the end-to-end results; 24 and 12 for the
+threshold. These are indicative and were enough to make specific decisions, but
+they are not a statistically robust benchmark. The speech-to-text numbers are
+the exception — those run over 475 clips.
 
 **Conversation history is per-browser.** It lives in `localStorage`, so it does
 not follow you to another device and clearing browser data deletes it. This is
@@ -286,7 +316,7 @@ need a persistent disk; the backend will not run correctly on a serverless
 platform with ephemeral storage. It is sized for a demo, not for concurrent
 load.
 
-**The frontend has no committed tests.** The backend has 110. Frontend
+**The frontend has no committed tests.** The backend has 127. Frontend
 behaviour has been verified with Playwright scripts written per change, but
 those have not been added to the repository — this is recorded technical debt,
 not an oversight.
@@ -297,14 +327,14 @@ not an oversight.
 
 ## Future improvements
 
-- Evaluate against real human Albanian speech, including accents and dialect,
-  rather than synthetic fixtures.
+- Break the speech-to-text results out by accent and dialect, and measure
+  spontaneous questions rather than read sentences.
 - Move to a native Albanian voice if a provider offers one — `TTS_MODEL` and
   `TTS_VOICE` are configuration, so this is not a code change.
 - Commit the frontend test suite and run both suites in CI.
 - Deploy, on a platform with a persistent disk.
-- Expand the evaluation sets enough to make the numbers robust rather than
-  indicative.
+- Expand the answer-quality question sets the way the speech ones were
+  expanded, so those numbers stop being merely indicative.
 - Stream answers token by token instead of waiting for the full response.
 
 ---
@@ -319,7 +349,7 @@ not an oversight.
 │   │   ├── config.py   all settings, environment-overridable
 │   │   └── db.py       SQLite schema + migrations
 │   ├── scripts/        reindex.py
-│   └── tests/          110 tests, providers stubbed
+│   └── tests/          127 tests, providers stubbed
 ├── frontend/           React SPA — see frontend/README.md
 │   └── src/
 │       ├── pages/      ChatPage · AdminPage

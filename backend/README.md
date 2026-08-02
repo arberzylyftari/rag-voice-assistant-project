@@ -66,8 +66,21 @@ text, `chroma/` for the vectors. Both are gitignored and rebuilt by the script.
 
 ```bash
 pip install -r requirements-dev.txt
-pytest
+pytest                                     # 127 tests, no API calls
 ```
+
+Providers are stubbed throughout, so the suite costs nothing to run.
+
+The speech-to-text evaluation is separate, because it does make API calls:
+
+```bash
+python scripts/evaluate_stt.py             # 100 clips, both configurations
+python scripts/evaluate_stt.py --limit 475 # the whole test split
+```
+
+It downloads the Albanian test split of Mozilla Common Voice 17.0 on first run
+and caches it under `data/stt-eval/`. See
+[Accuracy on real speech](#accuracy-on-real-speech).
 
 ## Endpoints
 
@@ -90,7 +103,60 @@ detected; `503`/`504` provider unavailable or timed out.
 
 **Albanian is steered with a prompt, not the `language` parameter** — the
 transcription API rejects the `sq` code. See `stt_prompt` in
-[app/config.py](app/config.py); removing it drops accuracy sharply.
+[app/config.py](app/config.py), and the measurements below.
+
+#### Accuracy on real speech
+
+`gpt-4o-transcribe` over the **475-clip Albanian test split of Mozilla Common
+Voice 17.0** — recordings of people reading, not synthetic audio. Reproduce it
+with:
+
+```bash
+python scripts/evaluate_stt.py --limit 475
+```
+
+| | WER | CER | Mean similarity | Exact |
+| --- | --- | --- | --- | --- |
+| **With the Albanian prompt** | **0.244** | **0.095** | **0.914** | 36.8% |
+| Without any prompt | 0.354 | 0.166 | 0.808 | 29.1% |
+
+Word and character error rates are pooled over the corpus rather than averaged
+per clip. Mean similarity is reported too, because it is the metric this
+project's earlier synthetic figures used and it makes the two comparable.
+Repeat runs agree to within 0.003.
+
+**The prompt helps, but roughly a third as much as synthetic fixtures
+suggested.** Those measured 0.96 with the prompt against 0.64 without — a gap
+of 0.32. On real speech the gap is 0.11. The prompt is still load-bearing:
+without it, short clips come back in Cyrillic (*"Ja se pse."* → *"Ясепсен."*),
+which is the same language-misdetection failure the synthetic fixtures showed.
+
+**Errors concentrate on very short utterances**, which matters because the
+system's real input is a spoken question rather than an isolated word:
+
+| Reference length | Clips | WER | Mean similarity |
+| --- | --- | --- | --- |
+| 1–2 words | 49 | 0.577 | 0.843 |
+| 3–4 words | 98 | 0.351 | 0.892 |
+| 5+ words | 328 | 0.222 | 0.931 |
+| 8+ words | 196 | 0.213 | 0.935 |
+
+**The prompt also causes fabrication, at a measurable rate.** On a clip it
+cannot make out, the model falls back on the prompt's vocabulary and returns a
+fluent, in-domain phrase. Of 475 clips, 5 (1.1%) came back fluent but
+unrelated to what was said — *"tri"* transcribed as *"pushimet,"*, *"Kishin të
+gjitha llojet e zbritjeve."* as *"Pushimet dhe politikat."* The prompt-echo
+filter caught only 1 (0.2%), because these are new inventions rather than
+quotations of the prompt. This is the hazard recorded in the decision log,
+now quantified: the filter is a partial defence, and the frontend energy gate
+is what keeps most wordless audio from reaching the model at all.
+
+**What this still does not measure.** Common Voice is *read* speech, mostly
+short general-domain sentences — not spontaneous questions about company
+policy. The steering prompt is tuned for HR and IT vocabulary the corpus does
+not contain, which likely understates its benefit for real in-domain questions
+while overstating the fabrication rate. Accent and dialect coverage is whatever
+the 155 contributors happen to represent, and is not broken out.
 
 ### `POST /search`
 
