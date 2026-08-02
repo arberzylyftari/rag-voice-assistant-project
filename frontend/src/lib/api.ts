@@ -21,7 +21,7 @@ export interface TranscriptionResponse {
 }
 
 /** Fallback for failures that carry no message from the backend. */
-const GENERIC_ERROR = 'Diçka shkoi keq. Provo sërish.'
+const GENERIC_ERROR = 'Diçka shkoi keq. Provo serish.'
 
 /**
  * An API failure carrying a message meant for the user.
@@ -89,7 +89,7 @@ export async function transcribeAudio(
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') throw error
     throw new ApiError(
-      'Nuk u arrit lidhja me serverin. Kontrollo internetin dhe provo sërish.',
+      'Nuk u arrit lidhja me serverin. Kontrollo internetin dhe provo serish.',
       0,
     )
   }

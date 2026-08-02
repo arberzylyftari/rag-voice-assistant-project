@@ -43,7 +43,7 @@ export function useTranscription(recording: AudioRecording | null) {
       })
       .catch((cause: unknown) => {
         if (cause instanceof Error && cause.name === 'AbortError') return
-        setError(cause instanceof ApiError ? cause.message : 'Transkriptimi dështoi. Provo sërish.')
+        setError(cause instanceof ApiError ? cause.message : 'Transkriptimi deshtoi. Provo serish.')
       })
       .finally(() => {
         if (!controller.signal.aborted) setIsTranscribing(false)
