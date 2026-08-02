@@ -26,6 +26,27 @@ class SearchHitResponse(BaseModel):
     score: float = Field(description="Similarity, 0 to 1.")
 
 
+class AnswerRequest(BaseModel):
+    """A question to answer from the Knowledge Base."""
+
+    question: str = Field(min_length=1, max_length=1000, description="The question, in Albanian.")
+
+
+class AnswerResponse(BaseModel):
+    """A grounded answer, or a refusal."""
+
+    question: str
+    answer: str = Field(description="The answer in Albanian, or the refusal message.")
+    answered: bool = Field(
+        description="False when the Knowledge Base does not support an answer."
+    )
+    sources: list[str] = Field(
+        default_factory=list,
+        description="Headings of the passages the answer was drawn from.",
+    )
+    model: str
+
+
 class SearchResponse(BaseModel):
     """Retrieval results and whether they cleared the relevance gate."""
 

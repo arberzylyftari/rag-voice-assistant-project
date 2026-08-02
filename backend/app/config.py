@@ -72,6 +72,16 @@ class Settings(BaseSettings):
 
     chroma_collection: str = "knowledge_base"
 
+    # --- Answer generation ---
+    # gpt-4o over gpt-4o-mini: both answer in-scope questions correctly and
+    # refuse out-of-scope ones, but only gpt-4o reliably corrects a false
+    # premise instead of refusing. See the decision log.
+    answer_model: str = "gpt-4o"
+
+    # Grounded answers should be reproducible: the same passages and the same
+    # question ought to give the same answer.
+    answer_temperature: float = 0.0
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse `cors_origins` into a list of origins."""
