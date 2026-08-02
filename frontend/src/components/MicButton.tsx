@@ -16,7 +16,7 @@ interface MicButtonProps {
 
 /** Albanian label for each state — doubles as the accessible name. */
 const LABELS: Record<MicButtonState, string> = {
-  idle: 'Shtyp për të folur',
+  idle: 'Shtyp per te folur',
   recording: 'Ndalo regjistrimin',
   processing: 'Duke transkriptuar…',
 }

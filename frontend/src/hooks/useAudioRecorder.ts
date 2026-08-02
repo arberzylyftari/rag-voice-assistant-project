@@ -27,16 +27,16 @@ const MIN_BLOB_BYTES = 1024
 /** User-facing messages. Albanian — this is product text. */
 const MESSAGES = {
   unsupported:
-    'Shfletuesi juaj nuk e mbështet regjistrimin e zërit. Provo me Chrome, Edge ose Safari të përditësuar.',
+    'Shfletuesi juaj nuk e mbeshtet regjistrimin e zerit. Provo me Chrome, Edge ose Safari te perditesuar.',
   insecure:
-    'Regjistrimi i zërit kërkon një lidhje të sigurt (HTTPS) ose hapjen e faqes në localhost.',
+    'Regjistrimi i zerit kerkon nje lidhje te sigurt (HTTPS) ose hapjen e faqes ne localhost.',
   denied:
-    'Nuk u dha leje për mikrofonin. Lejoje aksesin në cilësimet e shfletuesit dhe provo sërish.',
-  notFound: 'Nuk u gjet asnjë mikrofon. Lidh një mikrofon dhe provo sërish.',
+    'Nuk u dha leje per mikrofonin. Lejoje aksesin ne cilesimet e shfletuesit dhe provo serish.',
+  notFound: 'Nuk u gjet asnje mikrofon. Lidh nje mikrofon dhe provo serish.',
   inUse:
-    'Mikrofoni po përdoret nga një aplikacion tjetër. Mbylle atë aplikacion dhe provo sërish.',
-  empty: 'Nuk u regjistrua asnjë zë. Provo sërish dhe fol më afër mikrofonit.',
-  failed: 'Regjistrimi dështoi. Provo sërish.',
+    'Mikrofoni po perdoret nga nje aplikacion tjeter. Mbylle ate aplikacion dhe provo serish.',
+  empty: 'Nuk u regjistrua asnje ze. Provo serish dhe fol me afer mikrofonit.',
+  failed: 'Regjistrimi deshtoi. Provo serish.',
   maxDuration: 'Regjistrimi u ndal automatikisht pas 60 sekondash.',
 } as const
 

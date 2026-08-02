@@ -17,7 +17,7 @@ type ConnectionState = 'checking' | 'online' | 'offline'
 const CONNECTION_LABELS: Record<ConnectionState, string> = {
   checking: 'Duke u lidhur me serverin…',
   online: 'Lidhur me serverin',
-  offline: 'Serveri nuk përgjigjet',
+  offline: 'Serveri nuk pergjigjet',
 }
 
 const DOT_COLOURS: Record<ConnectionState, string> = {
@@ -59,7 +59,7 @@ export default function App() {
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Asistenti Zanor</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            Pyet me zë për politikat dhe procedurat e brendshme të kompanisë
+            Pyet me ze per politikat dhe procedurat e brendshme te kompanise
           </p>
         </div>
         <Badge variant="outline" className="gap-2 py-1.5">
@@ -96,8 +96,8 @@ export default function App() {
               <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
                 <p className="font-medium">Ende nuk ka biseda</p>
                 <p className="max-w-lg text-sm text-muted-foreground">
-                  Shtyp butonin e mikrofonit dhe bëj një pyetje, për shembull:{' '}
-                  <em>„Sa ditë pushimi vjetor kam?”</em>
+                  Shtyp butonin e mikrofonit dhe bej nje pyetje, per shembull:{' '}
+                  <em>„Sa dite pushimi vjetor kam?”</em>
                 </p>
               </div>
             )}

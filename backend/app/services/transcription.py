@@ -31,16 +31,16 @@ SUPPORTED_AUDIO_TYPES: dict[str, str] = {
 
 # User-facing messages. Albanian — this is product text.
 MESSAGES = {
-    "empty": "Skedari i audios është bosh. Regjistro sërish pyetjen.",
-    "too_short": "Nuk u regjistrua asnjë zë. Provo sërish dhe fol më afër mikrofonit.",
-    "too_large": "Regjistrimi është shumë i madh. Bëj një pyetje më të shkurtër.",
-    "unsupported_type": "Formati i audios nuk mbështetet. Përdor një shfletues të përditësuar.",
-    "no_speech": "Nuk u kuptua asnjë fjalë. Provo sërish dhe fol më qartë.",
-    "not_configured": "Shërbimi i transkriptimit nuk është i konfiguruar. Kontakto administratorin.",
-    "overloaded": "Shërbimi është i mbingarkuar për momentin. Provo sërish pas pak.",
-    "timeout": "Transkriptimi zgjati shumë. Provo me një regjistrim më të shkurtër.",
-    "unreachable": "Nuk u arrit lidhja me shërbimin e transkriptimit. Kontrollo internetin dhe provo sërish.",
-    "failed": "Transkriptimi dështoi. Provo sërish.",
+    "empty": "Skedari i audios eshte bosh. Regjistro serish pyetjen.",
+    "too_short": "Nuk u regjistrua asnje ze. Provo serish dhe fol me afer mikrofonit.",
+    "too_large": "Regjistrimi eshte shume i madh. Bej nje pyetje me te shkurter.",
+    "unsupported_type": "Formati i audios nuk mbeshtetet. Perdor nje shfletues te perditesuar.",
+    "no_speech": "Nuk u kuptua asnje fjale. Provo serish dhe fol me qarte.",
+    "not_configured": "Sherbimi i transkriptimit nuk eshte i konfiguruar. Kontakto administratorin.",
+    "overloaded": "Sherbimi eshte i mbingarkuar per momentin. Provo serish pas pak.",
+    "timeout": "Transkriptimi zgjati shume. Provo me nje regjistrim me te shkurter.",
+    "unreachable": "Nuk u arrit lidhja me sherbimin e transkriptimit. Kontrollo internetin dhe provo serish.",
+    "failed": "Transkriptimi deshtoi. Provo serish.",
 }
 
 
