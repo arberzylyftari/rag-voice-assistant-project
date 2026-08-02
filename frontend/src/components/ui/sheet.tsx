@@ -75,7 +75,7 @@ function SheetContent({
             >
               <XIcon
               />
-              <span className="sr-only">Close</span>
+              <span className="sr-only">Mbyll</span>
             </Button>
           </SheetPrimitive.Close>
         )}
