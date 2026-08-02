@@ -5,7 +5,8 @@ interface QuestionBubbleProps {
   /** Absent while the recording is still being transcribed. */
   text?: string
   durationMs: number
-  audioUrl: string
+  /** Absent on a reopened conversation, whose recordings no longer exist. */
+  audioUrl?: string
 }
 
 /** The user's turn: their question, with the recording still playable. */
@@ -18,12 +19,14 @@ export function QuestionBubble({ text, durationMs, audioUrl }: QuestionBubblePro
         ) : (
           <p className="text-[0.95rem] text-muted-foreground italic">Duke transkriptuar…</p>
         )}
-        <div className="flex items-center gap-3">
-          <audio className="h-8 max-w-full" src={audioUrl} controls />
-          <span className="shrink-0 font-mono text-xs text-muted-foreground">
-            {formatDuration(durationMs)}
-          </span>
-        </div>
+        {audioUrl && (
+          <div className="flex items-center gap-3">
+            <audio className="h-8 max-w-full" src={audioUrl} controls />
+            <span className="shrink-0 font-mono text-xs text-muted-foreground">
+              {formatDuration(durationMs)}
+            </span>
+          </div>
+        )}
       </CardContent>
     </Card>
   )

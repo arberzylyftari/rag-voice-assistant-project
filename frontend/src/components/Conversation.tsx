@@ -24,7 +24,9 @@ export function Conversation({ exchanges }: ConversationProps) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
         <p className="font-medium">Ende nuk ka biseda</p>
-        <p className="max-w-lg text-sm text-muted-foreground">
+        {/* No max width: the hint reads as one line wherever there is room
+            for it, and still wraps on a narrow screen rather than overflowing. */}
+        <p className="text-sm text-muted-foreground">
           Shtyp butonin e mikrofonit dhe bej nje pyetje, per shembull:{' '}
           <em>"Sa dite pushimi vjetor kam?"</em>
         </p>
@@ -69,8 +71,13 @@ export function Conversation({ exchanges }: ConversationProps) {
               sources={exchange.sources ?? []}
               resolvedQuestion={exchange.resolvedQuestion}
               // Only the newest answer speaks on arrival; replaying the
-              // history on every render would talk over the user.
-              autoPlay={exchange.id === exchanges[exchanges.length - 1]?.id}
+              // history on every render would talk over the user, and a
+              // reopened conversation should not start talking by itself —
+              // autoplay is for an answer that has just arrived, not one
+              // being reviewed.
+              autoPlay={
+                !exchange.restored && exchange.id === exchanges[exchanges.length - 1]?.id
+              }
             />
           )}
         </div>

@@ -37,8 +37,7 @@ npm run lint     # oxlint
 npm run preview  # serve the production build locally
 ```
 
-The backend must be running for the connection indicator in the header to
-report `Lidhur me serverin`, and its Knowledge Base index must be built before
+The backend must be running and its Knowledge Base index must be built before
 questions can be answered. See [../backend/README.md](../backend/README.md).
 
 ## The conversation loop
@@ -59,6 +58,48 @@ The newest answer reads itself aloud on arrival; every answer keeps a play
 control. Audio is fetched once and reused, so replaying costs nothing. Autoplay
 is attempted but never assumed — browsers block it without a prior gesture, and
 a blocked attempt leaves the control ready to press.
+
+## Conversation history
+
+Conversations are listed in a sidebar and can be reopened. They are stored in
+`localStorage` under the `conversations` key, which keeps the API stateless —
+history is still sent by the client on every `/answer` call, exactly as it was
+before the sidebar existed.
+
+Storing them client-side is a deliberate choice rather than the lazy one. A
+single table behind an API with no user accounts would show every visitor to
+the public demo the conversations of every other visitor; making that safe
+means issuing each browser an identifier, which is what `localStorage` already
+is. See [lib/conversations.ts](src/lib/conversations.ts).
+
+Only completed turns are saved. A failed or in-flight exchange has nothing
+worth reopening, so it lives and dies with the session.
+
+**Recordings are not stored.** They exist as object URLs, which do not survive
+a reload, and keeping the audio itself would mean a second storage layer for
+the least valuable part of the turn — the transcript sits directly above it. A
+reopened conversation therefore shows no player on its questions. The *answer*
+is unaffected: `/speak` synthesises it on demand, so reopened answers still
+read aloud. They do not read aloud *by themselves*, though — autoplay is for an
+answer that has just arrived, not one being reviewed.
+
+Titles come from the opening question, truncated at a word boundary. Albanian
+questions are already self-describing — "Sa dite pushimi vjetor kam?" needs no
+summarising — so a generated title would cost a round trip and a title-less
+state to buy very little.
+
+Fifty conversations are kept, oldest dropped first. Unreadable stored entries
+are discarded rather than thrown, so a shape written by an older build costs
+the history rather than the ability to open the page.
+
+### Recording lifetime
+
+The recorder creates an object URL per recording but does not own it; the
+conversation does, and frees them when it is closed or the page unmounts. This
+matters: the recorder previously revoked the previous URL each time it made a
+new one, while the conversation went on rendering an `<audio>` element for
+every earlier turn — so every question but the newest pointed at a freed
+resource.
 
 ## Dev server port
 
@@ -89,6 +130,7 @@ frontend/
 │   │   ├── animate-ui/       # Animate UI components
 │   │   ├── AnswerBubble.tsx  # answer + collapsible sources
 │   │   ├── Conversation.tsx  # the exchanges so far
+│   │   ├── ConversationSidebar.tsx  # saved conversations
 │   │   ├── MicButton.tsx     # push-to-talk control
 │   │   ├── ThemeProvider.tsx # theme state + wipe transition
 │   │   ├── ThemeToggle.tsx
@@ -102,6 +144,7 @@ frontend/
 │   │   └── useSpeech.ts
 │   ├── lib/
 │   │   ├── api.ts            # backend client
+│   │   ├── conversations.ts  # saved conversations in localStorage
 │   │   └── loudness.ts       # silence detection
 │   └── index.css             # theme variables
 ├── components.json
