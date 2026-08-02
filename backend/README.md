@@ -174,6 +174,31 @@ exactly the leak the grounding rules exist to prevent.
 History is supplied by the caller rather than held server-side, so the API
 stays stateless — no session store, no expiry.
 
+### Admin document endpoints
+
+Gated by a shared secret in `X-Admin-Token`. **An unset `ADMIN_TOKEN` disables
+them** — a deployed demo with unauthenticated upload and delete is worse than
+one without an admin panel.
+
+```bash
+curl -H "X-Admin-Token: $ADMIN_TOKEN" http://localhost:8000/admin/documents
+
+curl -X POST http://localhost:8000/admin/documents \
+  -H "X-Admin-Token: $ADMIN_TOKEN" -F "file=@politika.docx"
+
+curl -X DELETE http://localhost:8000/admin/documents/3 \
+  -H "X-Admin-Token: $ADMIN_TOKEN"
+```
+
+`PDF`, `DOCX`, `TXT` and `MD` up to 10 MB. Indexing completes before the upload
+returns, so the document is answerable immediately.
+
+Chunking keys on headings, so parsing recovers structure rather than just text:
+Word heading styles map to Markdown levels, and PDF/TXT headings are recovered
+from shape — short lines that do not end like a sentence. A document with no
+headings, or one that yields no chunks, is rejected rather than indexed as an
+unsearchable blob.
+
 ## The three guardrail layers
 
 Each layer catches something the others cannot, and none is sufficient alone.
@@ -218,6 +243,7 @@ never exposed to the frontend.
 | `STT_MODEL` | no | Defaults to `gpt-4o-transcribe`; set to `whisper-1` to fall back |
 | `ANSWER_MODEL` | no | Defaults to `gpt-4o` |
 | `REWRITE_MODEL` | no | Follow-up resolution; defaults to `gpt-4o-mini` |
+| `ADMIN_TOKEN` | no | Shared secret for `/admin/*`. Unset disables those endpoints |
 
 ## Layout
 
@@ -225,11 +251,14 @@ never exposed to the frontend.
 backend/
 ├── app/
 │   ├── routers/
+│   │   ├── admin.py           # /admin/documents
 │   │   ├── answer.py          # POST /answer
 │   │   ├── search.py          # POST /search
 │   │   └── transcription.py   # POST /transcribe
 │   ├── services/
 │   │   ├── chunking.py        # heading-aware document splitting
+│   │   ├── documents.py       # PDF/DOCX/TXT parsing
+│   │   ├── library.py         # document management
 │   │   ├── embeddings.py      # text-embedding-3-small
 │   │   ├── followup.py        # resolves a follow-up into a standalone question
 │   │   ├── generation.py      # grounded answers + citation verification
