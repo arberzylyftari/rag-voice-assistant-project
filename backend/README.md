@@ -124,6 +124,59 @@ grounding step. The threshold in
 set of in-scope and out-of-scope Albanian questions; the comment there records
 what moving it costs.
 
+### `POST /answer`
+
+Retrieves passages and answers from them, or refuses.
+
+```bash
+curl -X POST http://localhost:8000/answer \
+  -H "Content-Type: application/json" \
+  -d '{"question": "Nga 30 ditët e pushimit vjetor, sa mund të bart?"}'
+```
+
+```json
+{
+  "question": "Nga 30 ditët e pushimit vjetor, sa mund të bart?",
+  "answer": "Pushimi vjetor është 21 ditë pune në vit, jo 30. Prej tyre mund të barten maksimumi 5 ditë…",
+  "answered": true,
+  "sources": ["Politika e Pushimeve dhe e Lejeve › 2. Grumbullimi dhe bartja e ditëve"],
+  "model": "gpt-4o"
+}
+```
+
+A refusal is a **successful** response — `answered` is `false` and `answer`
+carries the Albanian message. Only a provider failure returns `503`.
+
+## The three guardrail layers
+
+Each layer catches something the others cannot, and none is sufficient alone.
+
+**1. Relevance gate** — [retrieval.py](app/services/retrieval.py). Filters
+questions with nothing close enough in the corpus. Measured against in-scope
+and out-of-scope question sets; it deliberately lets borderline questions
+through rather than refusing valid ones.
+
+**2. Grounded prompt** — [generation.py](app/services/generation.py). The
+model answers only from the supplied passages, reports when it cannot, and
+corrects a false premise instead of refusing it.
+
+**3. Citation verification** — same file. The model cites passages by number;
+anything outside the supplied set is dropped, and an answer left with no
+verifiable citation is discarded and becomes a refusal. This is what makes a
+citation a fact rather than a claim.
+
+Measured over the question sets in
+[docs/sample-documents/README.md](../docs/sample-documents/README.md):
+
+| | Result |
+| --- | --- |
+| In-scope questions answered correctly | 8/8 |
+| False premises corrected | 3/3 |
+| Out-of-scope questions refused | 6/6 |
+
+Three of the six out-of-scope questions clear the relevance gate and are
+stopped by grounding — which is the layering working as intended.
+
 ## Environment variables
 
 See [.env.example](.env.example). Secrets are read on the backend only and are
@@ -136,6 +189,7 @@ never exposed to the frontend.
 | `OPENAI_API_KEY` | yes | Speech-to-text, LLM, embeddings |
 | `ELEVENLABS_API_KEY` | yes (from TTS milestone) | Text-to-speech |
 | `STT_MODEL` | no | Defaults to `gpt-4o-transcribe`; set to `whisper-1` to fall back |
+| `ANSWER_MODEL` | no | Defaults to `gpt-4o` |
 
 ## Layout
 
@@ -143,11 +197,13 @@ never exposed to the frontend.
 backend/
 ├── app/
 │   ├── routers/
+│   │   ├── answer.py          # POST /answer
 │   │   ├── search.py          # POST /search
 │   │   └── transcription.py   # POST /transcribe
 │   ├── services/
 │   │   ├── chunking.py        # heading-aware document splitting
 │   │   ├── embeddings.py      # text-embedding-3-small
+│   │   ├── generation.py      # grounded answers + citation verification
 │   │   ├── indexing.py        # embed stored chunks into the vector index
 │   │   ├── ingestion.py       # read, chunk, store
 │   │   ├── openai_client.py   # shared provider client
