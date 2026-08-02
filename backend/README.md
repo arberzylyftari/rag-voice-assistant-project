@@ -36,6 +36,31 @@ uvicorn app.main:app --reload --port 8000
 | `http://localhost:8000/health` | Health check |
 | `http://localhost:8000/docs` | Interactive API documentation |
 
+## Knowledge Base index
+
+Build the index from the documents in `docs/sample-documents/`:
+
+```bash
+python scripts/reindex.py           # ingest changed documents
+python scripts/reindex.py --force   # re-ingest everything
+```
+
+Documents are split at heading boundaries — a `##` section becomes one chunk
+unless it has `###` subsections, in which case each becomes its own. The
+heading path travels with the text into the embedding, so a passage carries
+the words that make it findable. See
+[app/services/chunking.py](app/services/chunking.py).
+
+Unchanged documents are skipped by checksum. Metadata and chunk text live in
+`data/knowledge_base.sqlite`; the file is gitignored and rebuilt by the script.
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
 ## Endpoints
 
 ### `POST /transcribe`
@@ -77,8 +102,20 @@ never exposed to the frontend.
 ```
 backend/
 ├── app/
-│   ├── config.py   # environment-driven settings
-│   └── main.py     # FastAPI app, CORS, /health
+│   ├── routers/
+│   │   └── transcription.py   # POST /transcribe
+│   ├── services/
+│   │   ├── chunking.py        # heading-aware document splitting
+│   │   ├── ingestion.py       # read, chunk, store
+│   │   └── transcription.py   # speech-to-text
+│   ├── config.py              # environment-driven settings
+│   ├── db.py                  # SQLite schema and connections
+│   ├── main.py                # FastAPI app, CORS, /health
+│   └── schemas.py
+├── scripts/
+│   └── reindex.py             # rebuild the Knowledge Base index
+├── tests/
 ├── requirements.txt
+├── requirements-dev.txt
 └── .env.example
 ```
