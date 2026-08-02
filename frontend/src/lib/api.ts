@@ -116,6 +116,77 @@ export async function answerQuestion(
   return (await response.json()) as AnswerResponse
 }
 
+export interface KnowledgeDocument {
+  id: number
+  filename: string
+  title: string
+  version: string | null
+  owner: string | null
+  chunk_count: number
+  indexed: boolean
+  updated_at: string
+}
+
+/** Admin requests carry a shared secret rather than a session. */
+function adminHeaders(token: string): HeadersInit {
+  return { 'X-Admin-Token': token }
+}
+
+export async function listDocuments(
+  token: string,
+  signal?: AbortSignal,
+): Promise<KnowledgeDocument[]> {
+  const response = await fetch(`${API_BASE_URL}/admin/documents`, {
+    headers: adminHeaders(token),
+    signal,
+  })
+
+  if (!response.ok) {
+    throw new ApiError(await readErrorMessage(response), response.status)
+  }
+
+  return (await response.json()) as KnowledgeDocument[]
+}
+
+export async function uploadDocument(
+  token: string,
+  file: File,
+  signal?: AbortSignal,
+): Promise<KnowledgeDocument> {
+  const form = new FormData()
+  form.append('file', file)
+
+  const response = await fetch(`${API_BASE_URL}/admin/documents`, {
+    method: 'POST',
+    headers: adminHeaders(token),
+    body: form,
+    signal,
+  })
+
+  if (!response.ok) {
+    throw new ApiError(await readErrorMessage(response), response.status)
+  }
+
+  const body = (await response.json()) as { document: KnowledgeDocument }
+  return body.document
+}
+
+export async function deleteDocument(
+  token: string,
+  id: number,
+  signal?: AbortSignal,
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/admin/documents/${id}`, {
+    method: 'DELETE',
+    headers: adminHeaders(token),
+    signal,
+  })
+
+  if (!response.ok) {
+    throw new ApiError(await readErrorMessage(response), response.status)
+  }
+}
+
 /** Render Albanian text as speech. Returns MP3 audio. */
 export async function speakText(text: string, signal?: AbortSignal): Promise<Blob> {
   let response: Response

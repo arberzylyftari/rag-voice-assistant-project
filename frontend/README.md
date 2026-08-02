@@ -80,7 +80,11 @@ here — API keys live on the backend only.
 ```
 frontend/
 ├── src/
+│   ├── pages/
+│   │   ├── ChatPage.tsx      # the conversation
+│   │   └── AdminPage.tsx     # document management
 │   ├── components/
+│   │   ├── admin/            # upload panel, document table
 │   │   ├── ui/               # shadcn/ui components
 │   │   ├── animate-ui/       # Animate UI components
 │   │   ├── AnswerBubble.tsx  # answer + collapsible sources
@@ -91,16 +95,30 @@ frontend/
 │   ├── hooks/
 │   │   ├── useAudioRecorder.ts
 │   │   ├── useConversation.ts
+│   │   ├── useAdminToken.ts
 │   │   └── useSpeech.ts
 │   ├── lib/
 │   │   ├── api.ts            # backend client
 │   │   └── loudness.ts       # silence detection
-│   ├── App.tsx
 │   └── index.css             # theme variables
 ├── components.json
 ├── vite.config.ts
 └── .env.example
 ```
+
+## Admin panel
+
+`/admin` manages the Knowledge Base — a separate route, not a mode of the chat
+page, because uploading and deleting documents is not something a user does
+mid-conversation.
+
+It asks for the backend's `ADMIN_TOKEN` and holds it in `sessionStorage`, so
+closing the tab ends access rather than leaving a shared secret on disk. The
+backend disables `/admin/*` entirely when no token is configured.
+
+Upload accepts PDF, DOCX, TXT and MD by drop or picker. A document is indexed
+before the upload returns, so it answers questions as soon as it appears in the
+table. Deletion asks for confirmation and states what is lost.
 
 ## Silence detection
 
