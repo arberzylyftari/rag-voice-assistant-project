@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react'
+import { RotateCcw } from 'lucide-react'
 
-import { LoaderCircle } from '@/components/animate-ui/icons/loader-circle'
+import { Conversation } from '@/components/Conversation'
 import { MicButton } from '@/components/MicButton'
 import { Notice } from '@/components/Notice'
-import { QuestionBubble } from '@/components/QuestionBubble'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAudioRecorder } from '@/hooks/useAudioRecorder'
-import { useTranscription } from '@/hooks/useTranscription'
+import { useConversation } from '@/hooks/useConversation'
 import { fetchHealth } from '@/lib/api'
 import { formatDuration } from '@/lib/format'
 
@@ -30,7 +31,7 @@ export default function App() {
   const [connection, setConnection] = useState<ConnectionState>('checking')
   const { status, message, elapsedMs, recording, toggle, dismissMessage, maxDurationMs } =
     useAudioRecorder()
-  const { transcript, isTranscribing, error, dismissError } = useTranscription(recording)
+  const { exchanges, isBusy, reset } = useConversation(recording)
 
   useEffect(() => {
     const controller = new AbortController()
@@ -46,15 +47,10 @@ export default function App() {
   }, [])
 
   const isRecording = status === 'recording'
-  const micState = isRecording ? 'recording' : isTranscribing ? 'processing' : 'idle'
-
-  // Recorder problems and transcription failures share one banner; only one
-  // can be pending at a time, since a failed recording never gets uploaded.
-  const notice = message ?? (error ? { text: error, tone: 'error' as const } : null)
-  const dismissNotice = message ? dismissMessage : dismissError
+  const micState = isRecording ? 'recording' : isBusy ? 'processing' : 'idle'
 
   return (
-    <div className="mx-auto flex min-h-svh max-w-3xl flex-col gap-6 px-5 pt-6 pb-8">
+    <div className="mx-auto flex h-svh max-w-3xl flex-col gap-6 px-5 pt-6 pb-8">
       <header className="flex flex-wrap items-start justify-between gap-4 border-b pb-5">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Asistenti Zanor</h1>
@@ -62,45 +58,31 @@ export default function App() {
             Pyet me ze per politikat dhe procedurat e brendshme te kompanise
           </p>
         </div>
-        <Badge variant="outline" className="gap-2 py-1.5">
-          <span
-            className={`size-2 rounded-full ${DOT_COLOURS[connection]}`}
-            aria-hidden="true"
-          />
-          {CONNECTION_LABELS[connection]}
-        </Badge>
+        <div className="flex items-center gap-2">
+          {exchanges.length > 0 && (
+            <Button variant="ghost" size="sm" onClick={reset} disabled={isBusy}>
+              <RotateCcw />
+              Bisede e re
+            </Button>
+          )}
+          <Badge variant="outline" className="gap-2 py-1.5">
+            <span
+              className={`size-2 rounded-full ${DOT_COLOURS[connection]}`}
+              aria-hidden="true"
+            />
+            {CONNECTION_LABELS[connection]}
+          </Badge>
+        </div>
       </header>
 
-      {notice && (
-        <Notice text={notice.text} tone={notice.tone} onDismiss={dismissNotice} />
+      {message && (
+        <Notice text={message.text} tone={message.tone} onDismiss={dismissMessage} />
       )}
 
-      <main className="flex flex-1">
-        <Card className="flex-1">
-          <CardContent className="flex h-full flex-col gap-4">
-            {transcript ? (
-              <QuestionBubble
-                text={transcript.text}
-                durationMs={transcript.durationMs}
-                audioUrl={transcript.url}
-              />
-            ) : isTranscribing ? (
-              <div
-                className="flex flex-1 flex-col items-center justify-center gap-3"
-                role="status"
-              >
-                <LoaderCircle animate loop size={24} className="text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">Duke transkriptuar pyetjen…</p>
-              </div>
-            ) : (
-              <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-                <p className="font-medium">Ende nuk ka biseda</p>
-                <p className="max-w-lg text-sm text-muted-foreground">
-                  Shtyp butonin e mikrofonit dhe bej nje pyetje, per shembull:{' '}
-                  <em>„Sa dite pushimi vjetor kam?”</em>
-                </p>
-              </div>
-            )}
+      <main className="flex min-h-0 flex-1">
+        <Card className="flex-1 overflow-hidden">
+          <CardContent className="flex h-full flex-col">
+            <Conversation exchanges={exchanges} />
           </CardContent>
         </Card>
       </main>
