@@ -24,7 +24,9 @@ export function Conversation({ exchanges }: ConversationProps) {
     return (
       <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
         <p className="font-medium">Ende nuk ka biseda</p>
-        <p className="max-w-lg text-sm text-muted-foreground">
+        {/* No max width: the hint reads as one line wherever there is room
+            for it, and still wraps on a narrow screen rather than overflowing. */}
+        <p className="text-sm text-muted-foreground">
           Shtyp butonin e mikrofonit dhe bej nje pyetje, per shembull:{' '}
           <em>"Sa dite pushimi vjetor kam?"</em>
         </p>
