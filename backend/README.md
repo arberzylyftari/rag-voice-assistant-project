@@ -41,8 +41,9 @@ uvicorn app.main:app --reload --port 8000
 Build the index from the documents in `docs/sample-documents/`:
 
 ```bash
-python scripts/reindex.py           # ingest changed documents
-python scripts/reindex.py --force   # re-ingest everything
+python scripts/reindex.py             # ingest and index what changed
+python scripts/reindex.py --force     # re-ingest and re-embed everything
+python scripts/reindex.py --no-embed  # parse and store only, no API calls
 ```
 
 Documents are split at heading boundaries — a `##` section becomes one chunk
@@ -51,8 +52,15 @@ heading path travels with the text into the embedding, so a passage carries
 the words that make it findable. See
 [app/services/chunking.py](app/services/chunking.py).
 
-Unchanged documents are skipped by checksum. Metadata and chunk text live in
-`data/knowledge_base.sqlite`; the file is gitignored and rebuilt by the script.
+Chunks are embedded with `text-embedding-3-small` and stored in ChromaDB
+under cosine distance.
+
+Unchanged documents are skipped by checksum. A document also records the
+checksum it was last *embedded* at, so a failed or interrupted embedding run
+leaves it pending rather than silently missing from the index.
+
+Storage lives under `data/` — `knowledge_base.sqlite` for metadata and chunk
+text, `chroma/` for the vectors. Both are gitignored and rebuilt by the script.
 
 ## Tests
 
@@ -106,14 +114,19 @@ backend/
 │   │   └── transcription.py   # POST /transcribe
 │   ├── services/
 │   │   ├── chunking.py        # heading-aware document splitting
+│   │   ├── embeddings.py      # text-embedding-3-small
+│   │   ├── indexing.py        # embed stored chunks into the vector index
 │   │   ├── ingestion.py       # read, chunk, store
-│   │   └── transcription.py   # speech-to-text
+│   │   ├── openai_client.py   # shared provider client
+│   │   ├── transcription.py   # speech-to-text
+│   │   └── vector_store.py    # ChromaDB
 │   ├── config.py              # environment-driven settings
 │   ├── db.py                  # SQLite schema and connections
 │   ├── main.py                # FastAPI app, CORS, /health
 │   └── schemas.py
 ├── scripts/
 │   └── reindex.py             # rebuild the Knowledge Base index
+├── data/                      # SQLite + Chroma (gitignored)
 ├── tests/
 ├── requirements.txt
 ├── requirements-dev.txt
