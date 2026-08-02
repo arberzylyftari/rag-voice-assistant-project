@@ -82,6 +82,11 @@ class Settings(BaseSettings):
     # question ought to give the same answer.
     answer_temperature: float = 0.0
 
+    # Rewriting a follow-up into a standalone question is a simple task, and
+    # it sits in front of every conversational turn — the smaller model keeps
+    # that latency off the critical path.
+    rewrite_model: str = "gpt-4o-mini"
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse `cors_origins` into a list of origins."""
