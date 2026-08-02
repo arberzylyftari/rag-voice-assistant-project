@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
-import { RotateCcw } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { RotateCcw, Settings } from 'lucide-react'
 
 import { Conversation } from '@/components/Conversation'
 import { MicButton } from '@/components/MicButton'
@@ -27,7 +28,7 @@ const DOT_COLOURS: Record<ConnectionState, string> = {
   offline: 'bg-destructive',
 }
 
-export default function App() {
+export default function ChatPage() {
   const [connection, setConnection] = useState<ConnectionState>('checking')
   const { status, message, elapsedMs, recording, toggle, dismissMessage, maxDurationMs } =
     useAudioRecorder()
@@ -65,6 +66,11 @@ export default function App() {
               Bisede e re
             </Button>
           )}
+          <Button variant="ghost" size="sm" asChild>
+            <Link to="/admin" aria-label="Paneli i administrimit">
+              <Settings />
+            </Link>
+          </Button>
           <Badge variant="outline" className="gap-2 py-1.5">
             <span
               className={`size-2 rounded-full ${DOT_COLOURS[connection]}`}
