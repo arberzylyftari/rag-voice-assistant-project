@@ -1,7 +1,7 @@
 # Backend — RAG Voice Assistant API
 
-FastAPI service that will handle speech-to-text, retrieval over the Knowledge
-Base, grounded answer generation, and text-to-speech.
+FastAPI service handling speech-to-text, retrieval over the Knowledge Base,
+grounded answer generation, text-to-speech, and document management.
 
 ## Requirements
 
@@ -174,6 +174,32 @@ exactly the leak the grounding rules exist to prevent.
 History is supplied by the caller rather than held server-side, so the API
 stays stateless — no session store, no expiry.
 
+### `POST /speak`
+
+Returns MP3 audio for Albanian text.
+
+```bash
+curl -X POST http://localhost:8000/speak \
+  -H "Content-Type: application/json" \
+  -d '{"text": "Pushimi vjetor eshte 21 dite pune ne vit."}' \
+  --output answer.mp3
+```
+
+Separate from `/answer` so the text reaches the user immediately and the audio
+follows, rather than the whole turn waiting on synthesis.
+
+**No provider officially supports Albanian text-to-speech.** ElevenLabs does
+not list it among the 74 languages of `eleven_v3`; Azure marks `sq-AL`
+explicitly unsupported for TTS while supporting it for speech-to-text; Google
+does not carry it. OpenAI does not list it either, but measurably produces
+intelligible Albanian — round-tripping real answers through synthesis and back
+through transcription gives 0.96–0.99 fidelity.
+
+That measures intelligibility to a machine, not naturalness to a native
+speaker: pronunciation and prosody are audibly non-native. See
+[app/services/speech.py](app/services/speech.py) for the voice comparison and
+why an Albanian pronunciation instruction is sent with every request.
+
 ### Admin document endpoints
 
 Gated by a shared secret in `X-Admin-Token`. **An unset `ADMIN_TOKEN` disables
@@ -239,10 +265,10 @@ never exposed to the frontend.
 | `APP_ENV` | no | `development` or `production` |
 | `CORS_ORIGINS` | no | Comma-separated allowed browser origins (defaults to the frontend dev server on port 5180) |
 | `OPENAI_API_KEY` | yes | Speech-to-text, LLM, embeddings |
-| `ELEVENLABS_API_KEY` | yes (from TTS milestone) | Text-to-speech |
 | `STT_MODEL` | no | Defaults to `gpt-4o-transcribe`; set to `whisper-1` to fall back |
 | `ANSWER_MODEL` | no | Defaults to `gpt-4o` |
 | `REWRITE_MODEL` | no | Follow-up resolution; defaults to `gpt-4o-mini` |
+| `TTS_VOICE` | no | Defaults to `alloy`; `shimmer` and `fable` scored equally |
 | `ADMIN_TOKEN` | no | Shared secret for `/admin/*`. Unset disables those endpoints |
 
 ## Layout
@@ -254,6 +280,7 @@ backend/
 │   │   ├── admin.py           # /admin/documents
 │   │   ├── answer.py          # POST /answer
 │   │   ├── search.py          # POST /search
+│   │   ├── speech.py          # POST /speak
 │   │   └── transcription.py   # POST /transcribe
 │   ├── services/
 │   │   ├── chunking.py        # heading-aware document splitting
@@ -266,6 +293,7 @@ backend/
 │   │   ├── ingestion.py       # read, chunk, store
 │   │   ├── openai_client.py   # shared provider client
 │   │   ├── retrieval.py       # semantic search + relevance gate
+│   │   ├── speech.py          # text-to-speech
 │   │   ├── transcription.py   # speech-to-text
 │   │   └── vector_store.py    # ChromaDB
 │   ├── config.py              # environment-driven settings
