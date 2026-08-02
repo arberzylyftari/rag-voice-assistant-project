@@ -20,8 +20,14 @@ interface ThemeContextValue {
 // eslint-disable-next-line react-refresh/only-export-components
 export const ThemeContext = createContext<ThemeContextValue | null>(null)
 
-/** Half the wipe: cover, then uncover. Total lands inside 600–900ms. */
-const PHASE_MS = 380
+/**
+ * Half the wipe: cover, then uncover — 440ms in total.
+ *
+ * Deliberately below the 600-900ms the effect is usually specified at. At that
+ * length the sweep stops reading as a transition and starts reading as a wait,
+ * because the toggle is blocked for its whole duration.
+ */
+const PHASE_MS = 220
 
 /** Slight ease-out on the way in, ease-in on the way out, so it reads as one sweep. */
 const COVER_EASE = [0.32, 0.72, 0, 1] as const
