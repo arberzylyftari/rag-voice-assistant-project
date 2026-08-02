@@ -42,7 +42,7 @@ export function AnswerBubble({
         : 'Lexo me ze'
 
   return (
-    <Card className="mr-auto max-w-[90%] py-0">
+    <Card className="mr-auto max-w-[min(90%,46rem)] py-0">
       <CardContent className="flex flex-col gap-3 p-4">
         {resolvedQuestion && (
           <p className="flex items-start gap-2 text-xs text-muted-foreground">
