@@ -12,6 +12,12 @@ class TranscriptionResponse(BaseModel):
     model: str = Field(description="Speech-to-text model that produced it.")
 
 
+class SpeakRequest(BaseModel):
+    """Text to read aloud."""
+
+    text: str = Field(min_length=1, max_length=4000, description="The text, in Albanian.")
+
+
 class DocumentResponse(BaseModel):
     """A Knowledge Base document as the admin panel sees it."""
 
