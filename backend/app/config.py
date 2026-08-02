@@ -32,7 +32,6 @@ class Settings(BaseSettings):
     # Provider credentials. Optional at this stage so the skeleton boots
     # without them; the endpoints that need them validate on use.
     openai_api_key: str | None = None
-    elevenlabs_api_key: str | None = None
 
     # Local, file-based storage root (SQLite metadata + Chroma index).
     data_dir: Path = BACKEND_DIR / "data"
