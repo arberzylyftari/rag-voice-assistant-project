@@ -63,7 +63,7 @@ export default function AdminPage() {
       try {
         const document = await uploadDocument(token, file)
         setNotice({
-          text: `„${document.title}" u shtua me ${document.chunk_count} seksione dhe eshte gati per pyetje.`,
+          text: `"${document.title}" u shtua me ${document.chunk_count} seksione dhe eshte gati per pyetje.`,
           tone: 'info',
         })
         await refresh()
@@ -83,7 +83,7 @@ export default function AdminPage() {
 
       try {
         await deleteDocument(token, document.id)
-        setNotice({ text: `„${document.title}" u fshi.`, tone: 'info' })
+        setNotice({ text: `"${document.title}" u fshi.`, tone: 'info' })
         await refresh()
       } catch (cause) {
         setNotice({ text: describe(cause, 'Fshirja deshtoi.'), tone: 'error' })
