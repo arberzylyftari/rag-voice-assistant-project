@@ -63,6 +63,15 @@ class Settings(BaseSettings):
 
     openai_timeout_seconds: float = 60.0
 
+    # --- Retrieval ---
+    embedding_model: str = "text-embedding-3-small"
+
+    # Chunks sent per embedding request. The API accepts far more, but a
+    # smaller batch keeps a single failure cheap to retry.
+    embedding_batch_size: int = 64
+
+    chroma_collection: str = "knowledge_base"
+
     @property
     def cors_origins_list(self) -> list[str]:
         """Parse `cors_origins` into a list of origins."""
