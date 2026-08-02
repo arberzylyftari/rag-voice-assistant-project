@@ -14,7 +14,7 @@ import { formatDuration } from '@/lib/format'
 export default function ChatPage() {
   const { status, message, elapsedMs, recording, toggle, dismissMessage, maxDurationMs } =
     useAudioRecorder()
-  const { exchanges, isBusy, reset } = useConversation(recording)
+  const { exchanges, isBusy, startNew } = useConversation(recording)
 
   const isRecording = status === 'recording'
   const micState = isRecording ? 'recording' : isBusy ? 'processing' : 'idle'
@@ -30,7 +30,7 @@ export default function ChatPage() {
         </div>
         <div className="flex items-center gap-2">
           {exchanges.length > 0 && (
-            <Button variant="ghost" size="sm" onClick={reset} disabled={isBusy}>
+            <Button variant="ghost" size="sm" onClick={startNew} disabled={isBusy}>
               <RotateCcw />
               Bisede e re
             </Button>

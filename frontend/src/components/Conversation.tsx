@@ -69,8 +69,11 @@ export function Conversation({ exchanges }: ConversationProps) {
               sources={exchange.sources ?? []}
               resolvedQuestion={exchange.resolvedQuestion}
               // Only the newest answer speaks on arrival; replaying the
-              // history on every render would talk over the user.
-              autoPlay={exchange.id === exchanges[exchanges.length - 1]?.id}
+              // history on every render would talk over the user, and a
+              // reopened conversation should not start talking by itself.
+              autoPlay={
+                !exchange.restored && exchange.id === exchanges[exchanges.length - 1]?.id
+              }
             />
           )}
         </div>
