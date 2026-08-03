@@ -1,8 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-import { isSilent, measureLoudness } from '@/lib/loudness'
+import { isSilent, measureLoudness, watchVoiceActivity } from '@/lib/loudness'
+import type { VoiceActivityWatcher } from '@/lib/loudness'
 
-export type RecorderStatus = 'idle' | 'recording'
+/**
+ * `finalising` covers the gap between the recorder actually stopping and the
+ * decision on what happened to the result — decoding the blob to check it
+ * is not silence is asynchronous. Without this as a real, observable status,
+ * a caller that starts a new recording as soon as `status` leaves
+ * `'recording'` (hands-free mode) can start one on top of a turn whose
+ * outcome has not landed yet, rather than after it.
+ */
+export type RecorderStatus = 'idle' | 'recording' | 'finalising'
 
 export interface AudioRecording {
   blob: Blob
@@ -92,6 +101,7 @@ export function useAudioRecorder() {
   const startedAtRef = useRef(0)
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const autoStopRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const vadRef = useRef<VoiceActivityWatcher | null>(null)
 
   const releaseStream = useCallback(() => {
     streamRef.current?.getTracks().forEach((track) => track.stop())
@@ -102,6 +112,9 @@ export function useAudioRecorder() {
     if (autoStopRef.current) clearTimeout(autoStopRef.current)
     tickRef.current = null
     autoStopRef.current = null
+
+    vadRef.current?.stop()
+    vadRef.current = null
   }, [])
 
   useEffect(() => {
@@ -115,23 +128,31 @@ export function useAudioRecorder() {
     recorder.stop()
   }, [])
 
-  const start = useCallback(async () => {
+  /**
+   * Open the microphone and start recording.
+   *
+   * Returns whether recording actually began, so a caller driving this
+   * automatically — hands-free mode — can tell a real failure (denied
+   * permission, unsupported browser) from simply not having started yet, and
+   * stop trying rather than hammering `getUserMedia` in a retry loop.
+   */
+  const start = useCallback(async (options?: { autoStop?: boolean }): Promise<boolean> => {
     setMessage(null)
 
     if (!window.isSecureContext) {
       setMessage({ text: MESSAGES.insecure, tone: 'error' })
-      return
+      return false
     }
 
     if (!navigator.mediaDevices?.getUserMedia || typeof MediaRecorder === 'undefined') {
       setMessage({ text: MESSAGES.unsupported, tone: 'error' })
-      return
+      return false
     }
 
     const mimeType = pickMimeType()
     if (!mimeType) {
       setMessage({ text: MESSAGES.unsupported, tone: 'error' })
-      return
+      return false
     }
 
     let stream: MediaStream
@@ -139,7 +160,7 @@ export function useAudioRecorder() {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true })
     } catch (error) {
       setMessage({ text: describeMediaError(error), tone: 'error' })
-      return
+      return false
     }
 
     const recorder = new MediaRecorder(stream, { mimeType })
@@ -164,17 +185,22 @@ export function useAudioRecorder() {
       const blob = new Blob(chunksRef.current, { type: mimeType })
 
       releaseStream()
-      setStatus('idle')
       setElapsedMs(0)
 
       if (durationMs < MIN_DURATION_MS || blob.size < MIN_BLOB_BYTES) {
+        setStatus('idle')
         setMessage({ text: MESSAGES.empty, tone: 'error' })
         return
       }
 
+      // Still deciding whether this recording holds real speech — see the
+      // `RecorderStatus` doc comment for why this cannot just be 'idle' yet.
+      setStatus('finalising')
+
       void (async () => {
         try {
           if (isSilent(await measureLoudness(blob))) {
+            setStatus('idle')
             setMessage({ text: MESSAGES.empty, tone: 'error' })
             return
           }
@@ -184,8 +210,16 @@ export function useAudioRecorder() {
           // valid recording. The backend still screens the transcript.
         }
 
+        setStatus('idle')
         setRecording({ blob, mimeType, durationMs, url: URL.createObjectURL(blob) })
       })()
+    }
+
+    if (options?.autoStop) {
+      // Hands-free mode: end the turn on a trailing pause rather than a
+      // button press. Left running until `releaseStream` tears it down along
+      // with everything else this recording opened.
+      vadRef.current = watchVoiceActivity(stream, { onSpeechEnd: stop })
     }
 
     recorder.start()
@@ -200,6 +234,8 @@ export function useAudioRecorder() {
       setMessage({ text: MESSAGES.maxDuration, tone: 'info' })
       stop()
     }, MAX_DURATION_MS)
+
+    return true
   }, [releaseStream, stop])
 
   const toggle = useCallback(() => {
@@ -217,6 +253,10 @@ export function useAudioRecorder() {
     message,
     elapsedMs,
     recording,
+    // Exposed alongside `toggle` for hands-free mode, which drives listening
+    // on its own rather than through a button press.
+    start,
+    stop,
     toggle,
     dismissMessage,
     maxDurationMs: MAX_DURATION_MS,
