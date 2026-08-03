@@ -8,10 +8,16 @@ import type { Exchange } from '@/hooks/useConversation'
 
 interface ConversationProps {
   exchanges: Exchange[]
+  /**
+   * Hands-free mode: called once the newest, live answer has finished
+   * attempting to speak, so listening can resume. Never fires for a restored
+   * (reopened) answer — those do not autoplay either.
+   */
+  onLatestAnswerSettled?: () => void
 }
 
 /** The exchanges so far, oldest first. */
-export function Conversation({ exchanges }: ConversationProps) {
+export function Conversation({ exchanges, onLatestAnswerSettled }: ConversationProps) {
   const endRef = useRef<HTMLDivElement>(null)
 
   // Follow the newest turn as it arrives, rather than leaving the user
@@ -36,52 +42,55 @@ export function Conversation({ exchanges }: ConversationProps) {
 
   return (
     <div className="flex flex-1 flex-col gap-4 overflow-y-auto">
-      {exchanges.map((exchange) => (
-        <div key={exchange.id} className="flex flex-col gap-3">
-          <QuestionBubble
-            text={exchange.question}
-            durationMs={exchange.durationMs}
-            audioUrl={exchange.audioUrl}
-          />
+      {exchanges.map((exchange) => {
+        // Only the newest, live answer speaks on arrival; replaying the
+        // history on every render would talk over the user, and a reopened
+        // conversation should not start talking by itself — autoplay is for
+        // an answer that has just arrived, not one being reviewed.
+        const isLatestLive =
+          !exchange.restored && exchange.id === exchanges[exchanges.length - 1]?.id
 
-          {exchange.status === 'answering' && (
-            <p
-              className="mr-auto flex items-center gap-2 text-sm text-muted-foreground"
-              role="status"
-            >
-              <LoaderCircle animate loop size={16} />
-              Duke kerkuar ne dokumente…
-            </p>
-          )}
-
-          {exchange.status === 'failed' && (
-            <p
-              className="mr-auto flex items-start gap-2 text-sm text-destructive"
-              role="alert"
-            >
-              <AlertCircle className="mt-0.5 size-4 shrink-0" />
-              {exchange.error}
-            </p>
-          )}
-
-          {exchange.status === 'done' && exchange.answer && (
-            <AnswerBubble
-              answer={exchange.answer}
-              answered={exchange.answered ?? false}
-              sources={exchange.sources ?? []}
-              resolvedQuestion={exchange.resolvedQuestion}
-              // Only the newest answer speaks on arrival; replaying the
-              // history on every render would talk over the user, and a
-              // reopened conversation should not start talking by itself —
-              // autoplay is for an answer that has just arrived, not one
-              // being reviewed.
-              autoPlay={
-                !exchange.restored && exchange.id === exchanges[exchanges.length - 1]?.id
-              }
+        return (
+          <div key={exchange.id} className="flex flex-col gap-3">
+            <QuestionBubble
+              text={exchange.question}
+              durationMs={exchange.durationMs}
+              audioUrl={exchange.audioUrl}
             />
-          )}
-        </div>
-      ))}
+
+            {exchange.status === 'answering' && (
+              <p
+                className="mr-auto flex items-center gap-2 text-sm text-muted-foreground"
+                role="status"
+              >
+                <LoaderCircle animate loop size={16} />
+                Duke kerkuar ne dokumente…
+              </p>
+            )}
+
+            {exchange.status === 'failed' && (
+              <p
+                className="mr-auto flex items-start gap-2 text-sm text-destructive"
+                role="alert"
+              >
+                <AlertCircle className="mt-0.5 size-4 shrink-0" />
+                {exchange.error}
+              </p>
+            )}
+
+            {exchange.status === 'done' && exchange.answer && (
+              <AnswerBubble
+                answer={exchange.answer}
+                answered={exchange.answered ?? false}
+                sources={exchange.sources ?? []}
+                resolvedQuestion={exchange.resolvedQuestion}
+                autoPlay={isLatestLive}
+                onPlaybackSettled={isLatestLive ? onLatestAnswerSettled : undefined}
+              />
+            )}
+          </div>
+        )
+      })}
       <div ref={endRef} />
     </div>
   )

@@ -21,6 +21,8 @@ interface AnswerBubbleProps {
   resolvedQuestion?: string
   /** Newest answer reads itself aloud; older ones wait to be asked. */
   autoPlay?: boolean
+  /** Hands-free mode: called once this answer's speech attempt has concluded. */
+  onPlaybackSettled?: () => void
 }
 
 /** The assistant's turn: the answer, and the passages it came from. */
@@ -30,9 +32,10 @@ export function AnswerBubble({
   sources,
   resolvedQuestion,
   autoPlay = false,
+  onPlaybackSettled,
 }: AnswerBubbleProps) {
   const [sourcesOpen, setSourcesOpen] = useState(false)
-  const speech = useSpeech(answer, autoPlay)
+  const speech = useSpeech(answer, autoPlay, { onSettled: onPlaybackSettled })
 
   const speechLabel =
     speech.state === 'playing'
