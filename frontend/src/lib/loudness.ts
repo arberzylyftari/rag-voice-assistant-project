@@ -68,3 +68,103 @@ export async function measureLoudness(blob: Blob): Promise<Loudness> {
 export function isSilent({ rms, peak }: Loudness): boolean {
   return rms < RMS_THRESHOLD && peak < PEAK_THRESHOLD
 }
+
+/**
+ * Live voice-activity detection, for hands-free mode.
+ *
+ * `measureLoudness` above judges a finished recording after the fact; this
+ * watches the microphone stream while it is still being recorded and reports
+ * once the user has spoken and then paused, so a hands-free turn can end
+ * itself instead of waiting for a button press.
+ *
+ * The threshold is reasoned from the same measurements documented above —
+ * comfortably above the loudest recorded noise sample (0.00327) and below the
+ * quietest recorded speech (0.075) — not an independent measurement of its
+ * own. Live 100ms windows are burstier than a whole-clip average, so it sits
+ * higher than the post-hoc RMS_THRESHOLD to avoid triggering on room noise.
+ */
+const LIVE_SPEECH_THRESHOLD = 0.02
+
+/** A pause this long after speech has been heard ends the turn. */
+const SILENCE_HANGOVER_MS = 1200
+
+const SAMPLE_INTERVAL_MS = 100
+
+export interface VoiceActivityOptions {
+  /** Called once, when speech has been heard and then followed by a pause. */
+  onSpeechEnd: () => void
+  speechThreshold?: number
+  silenceHangoverMs?: number
+}
+
+export interface VoiceActivityWatcher {
+  /** Stop sampling and release the audio graph. Safe to call more than once. */
+  stop: () => void
+}
+
+/**
+ * Watch a live microphone stream and call `onSpeechEnd` once, after the user
+ * has spoken and then gone quiet for `silenceHangoverMs`.
+ *
+ * Runs alongside `MediaRecorder` on the same stream — a stream can have more
+ * than one consumer, so this does not affect what gets recorded.
+ *
+ * Deliberately has no "nothing was ever said" timeout: if the user never
+ * speaks, this simply keeps waiting. The recorder's own maximum-duration cap
+ * is what ends that case, so a silent turn costs one message a minute rather
+ * than a repeating one every few seconds.
+ */
+export function watchVoiceActivity(
+  stream: MediaStream,
+  {
+    onSpeechEnd,
+    speechThreshold = LIVE_SPEECH_THRESHOLD,
+    silenceHangoverMs = SILENCE_HANGOVER_MS,
+  }: VoiceActivityOptions,
+): VoiceActivityWatcher {
+  const context = new AudioContext()
+  const source = context.createMediaStreamSource(stream)
+  const analyser = context.createAnalyser()
+  analyser.fftSize = 1024
+  source.connect(analyser)
+
+  const samples = new Float32Array(analyser.fftSize)
+  let hasSpoken = false
+  let silenceStartedAt: number | null = null
+  let settled = false
+  let stopped = false
+
+  const timer = setInterval(() => {
+    if (stopped || settled) return
+
+    analyser.getFloatTimeDomainData(samples)
+    let sumOfSquares = 0
+    for (let i = 0; i < samples.length; i += 1) sumOfSquares += samples[i] * samples[i]
+    const rms = Math.sqrt(sumOfSquares / samples.length)
+
+    if (rms >= speechThreshold) {
+      hasSpoken = true
+      silenceStartedAt = null
+      return
+    }
+
+    if (!hasSpoken) return // still waiting for the user to start talking
+
+    silenceStartedAt ??= Date.now()
+
+    if (Date.now() - silenceStartedAt >= silenceHangoverMs) {
+      settled = true
+      onSpeechEnd()
+    }
+  }, SAMPLE_INTERVAL_MS)
+
+  const stop = (): void => {
+    if (stopped) return
+    stopped = true
+    clearInterval(timer)
+    source.disconnect()
+    void context.close()
+  }
+
+  return { stop }
+}
