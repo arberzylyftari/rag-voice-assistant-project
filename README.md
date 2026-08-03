@@ -160,7 +160,8 @@ LAN address does not.
 ### Tests
 
 ```bash
-cd backend && pytest         # 127 tests, providers stubbed, no API calls
+cd backend && pytest              # 127 tests, providers stubbed, no API calls
+npm run test:e2e --prefix frontend # 44 browser tests, backend stubbed
 npm run build --prefix frontend
 npm run lint --prefix frontend
 ```
@@ -316,11 +317,6 @@ need a persistent disk; the backend will not run correctly on a serverless
 platform with ephemeral storage. It is sized for a demo, not for concurrent
 load.
 
-**The frontend has no committed tests.** The backend has 127. Frontend
-behaviour has been verified with Playwright scripts written per change, but
-those have not been added to the repository — this is recorded technical debt,
-not an oversight.
-
 **It is not deployed.** Everything above runs locally.
 
 ---
@@ -331,7 +327,7 @@ not an oversight.
   spontaneous questions rather than read sentences.
 - Move to a native Albanian voice if a provider offers one — `TTS_MODEL` and
   `TTS_VOICE` are configuration, so this is not a code change.
-- Commit the frontend test suite and run both suites in CI.
+- Run both test suites in CI.
 - Deploy, on a platform with a persistent disk.
 - Expand the answer-quality question sets the way the speech ones were
   expanded, so those numbers stop being merely indicative.
@@ -351,11 +347,12 @@ not an oversight.
 │   ├── scripts/        reindex.py
 │   └── tests/          127 tests, providers stubbed
 ├── frontend/           React SPA — see frontend/README.md
-│   └── src/
-│       ├── pages/      ChatPage · AdminPage
-│       ├── components/ shadcn/ui + Animate UI only
-│       ├── hooks/      recorder · conversation · speech · theme
-│       └── lib/        api · conversations · loudness · theme
+│   ├── src/
+│   │   ├── pages/      ChatPage · AdminPage
+│   │   ├── components/ shadcn/ui + Animate UI only
+│   │   ├── hooks/      recorder · conversation · speech · theme
+│   │   └── lib/        api · conversations · loudness · theme
+│   └── e2e/            44 Playwright tests, backend stubbed
 └── docs/
     └── sample-documents/   the Knowledge Base corpus (Albanian)
 ```
