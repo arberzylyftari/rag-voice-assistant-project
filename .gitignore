@@ -13,6 +13,8 @@ __pycache__/
 venv/
 backend/data/*.sqlite
 backend/data/chroma/
+# Speech corpus downloaded by scripts/evaluate_stt.py — fetched, not committed
+backend/data/stt-eval/
 
 # Node
 node_modules/
