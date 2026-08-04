@@ -73,11 +73,27 @@ live voice-activity detector (`watchVoiceActivity` in
 [lib/loudness.ts](src/lib/loudness.ts)) samples the raw microphone stream via
 an `AnalyserNode` — a second consumer of the same `MediaStream` `MediaRecorder`
 is reading, so it does not affect what gets recorded — and calls back once RMS
-has crossed a speech threshold and then stayed below it for 1.2 seconds. There
-is deliberately no "nothing was said" timeout of its own: if you never speak,
-it just keeps waiting, and the recorder's existing 60-second cap is what ends
-that case, so a silent turn costs one message a minute rather than a repeating
-one every few seconds.
+has crossed a speech threshold and then stayed below it for 1.2 seconds.
+
+**The threshold adapts to the room rather than using one fixed number.** A
+value measured in one quiet room does not generalise: a noisier room (fan
+noise, echo, a laptop mic with more self-noise) can sit above a fixed
+threshold permanently, so "quiet again" is never observed and a turn never
+ends on its own. The first half-second of each recording instead estimates
+the room's ambient floor, and speech/quiet are judged relative to that floor.
+This replaced an earlier fixed-threshold version that worked in testing but
+failed on real hardware in a real room — the first turn of a session ended
+itself correctly, but later turns did not, because by then the ambient level
+(some of it likely echo from the assistant's own voice through the speakers)
+sat above the fixed number and never read as "quiet" again.
+
+There is deliberately no "nothing was said" timeout of its own: if you never
+speak, it just keeps waiting, and the recorder's own maximum-duration cap is
+what ends that case eventually — **3 minutes for push-to-talk, 30 minutes for
+hands-free.** They differ because they mean different things: on push-to-talk,
+hitting the cap means you forgot to press stop; on hands-free, the detector is
+what is meant to end a turn, and the cap is only the backstop for when it
+does not — a real back-and-forth should never bump into it.
 
 Once the answer has been read aloud — or synthesis fails, or the browser
 blocks autoplay — listening resumes on its own. The mic never listens while
