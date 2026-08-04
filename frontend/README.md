@@ -60,6 +60,43 @@ control. Audio is fetched once and reused, so replaying costs nothing. Autoplay
 is attempted but never assumed — browsers block it without a prior gesture, and
 a blocked attempt leaves the control ready to press.
 
+## Hands-free mode
+
+The "Bisede e vazhdueshme" switch below the mic turns push-to-talk into a
+continuous listen → answer → speak → listen loop, the way ChatGPT's voice mode
+works. Push-to-talk itself is untouched — this only changes what happens once
+the switch is on.
+
+Flip it on and it starts listening immediately. Recording ends itself once you
+have spoken and then paused, rather than waiting for a second button press: a
+live voice-activity detector (`watchVoiceActivity` in
+[lib/loudness.ts](src/lib/loudness.ts)) samples the raw microphone stream via
+an `AnalyserNode` — a second consumer of the same `MediaStream` `MediaRecorder`
+is reading, so it does not affect what gets recorded — and calls back once RMS
+has crossed a speech threshold and then stayed below it for 1.2 seconds. There
+is deliberately no "nothing was said" timeout of its own: if you never speak,
+it just keeps waiting, and the recorder's existing 60-second cap is what ends
+that case, so a silent turn costs one message a minute rather than a repeating
+one every few seconds.
+
+Once the answer has been read aloud — or synthesis fails, or the browser
+blocks autoplay — listening resumes on its own. The mic never listens while
+the assistant is talking, so it cannot pick up its own voice through the
+speakers; the button shows a "Duke folur pergjigjen…" state for that gap and
+is the one control that stays clickable through it, so pressing it there
+always exits hands-free mode even mid-answer.
+
+**One speaker at a time — the assistant is never interrupted.** True
+full-duplex, where you can talk over it the way ChatGPT's Advanced Voice Mode
+allows, needs a different backend transport (OpenAI's Realtime API over a
+WebSocket) and has no clean place to run citation verification before
+anything is spoken — which is what makes a citation here a fact rather than a
+claim. It was considered and deliberately left out; see `context/decisions.md`.
+
+If the microphone itself fails once hands-free is on — permission denied,
+unsupported browser — the mode turns itself back off rather than retrying in
+a loop; the usual Albanian error banner explains why.
+
 ## Conversation history
 
 Conversations are listed in a sidebar and can be reopened. They are stored in
@@ -106,7 +143,7 @@ resource.
 
 ```bash
 npx playwright install chromium   # once
-npm run test:e2e                  # 44 tests
+npm run test:e2e                  # 49 tests
 npm run test:e2e:ui               # watch mode, for writing them
 ```
 
@@ -125,6 +162,17 @@ running.
 | [errors.spec.ts](e2e/errors.spec.ts) | Backend failures on each route, and recovery |
 | [admin.spec.ts](e2e/admin.spec.ts) | Token gate, listing, upload, deletion, sign-out |
 | [theme.spec.ts](e2e/theme.spec.ts) | System preference, stored choice, pre-paint application |
+| [hands-free.spec.ts](e2e/hands-free.spec.ts) | Starting, stopping, push-to-talk unaffected, a broken microphone turning the mode back off |
+| [hands-free-vad.spec.ts](e2e/hands-free-vad.spec.ts) | The voice-activity detector against real recorded speech, not a stand-in for it — see below |
+
+`hands-free-vad.spec.ts` runs under its own Playwright project
+(`chromium-real-audio`), launched with `--use-file-for-fake-audio-capture`
+pointed at [e2e/fixtures/speech-then-silence.wav](e2e/fixtures/speech-then-silence.wav)
+— a real Albanian utterance from the Common Voice corpus used in
+`scripts/evaluate_stt.py`, looped with pauses between repeats. The network is
+still stubbed; only the microphone input is real. This is what lets the test
+assert that recording stops itself on a genuine pause in genuine speech,
+rather than asserting that a mocked function was called.
 
 ### Writing more of them
 
@@ -155,6 +203,21 @@ Things that cost time to work out the first time:
   test.
 - A recording under 700 ms is discarded as silence before it is ever uploaded,
   so `ask()` records for longer than that.
+- **Chrome's fake-audio-capture appears to advance through the fixture file
+  at wall-clock speed for as long as the browser process lives, not reset
+  per recording.** A second real-audio test in the same worker inherited a
+  playback position already past the speech and into trailing silence, and
+  never observed speech at all. `hands-free-vad.spec.ts` is deliberately the
+  only test in its file so it is always the first thing to touch that
+  browser's fake microphone; the fixture also loops with pauses, so a test
+  is never more than one cycle away from a full speech-then-pause transition
+  regardless of when in wall-clock time it starts listening.
+- **`recorder.status` has a `'finalising'` value between a recording actually
+  stopping and the decision on whether it held real speech** — that decision
+  requires decoding the audio, which is async. Code that starts a new
+  recording as soon as `status !== 'recording'` (hands-free mode did, at
+  first) can start one on top of a turn whose outcome has not landed yet;
+  the correct guard is `status === 'idle'`.
 
 ## Dev server port
 
@@ -194,13 +257,14 @@ frontend/
 │   ├── hooks/
 │   │   ├── useAudioRecorder.ts
 │   │   ├── useConversation.ts
+│   │   ├── useHandsFree.ts   # the listen -> answer -> speak -> listen loop
 │   │   ├── useAdminToken.ts
 │   │   ├── useTheme.ts
 │   │   └── useSpeech.ts
 │   ├── lib/
 │   │   ├── api.ts            # backend client
 │   │   ├── conversations.ts  # saved conversations in localStorage
-│   │   └── loudness.ts       # silence detection
+│   │   └── loudness.ts       # silence detection + live voice-activity detection
 │   └── index.css             # theme variables
 ├── components.json
 ├── vite.config.ts

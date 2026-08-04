@@ -4,6 +4,16 @@ import { ApiError, speakText } from '@/lib/api'
 
 export type SpeechState = 'idle' | 'loading' | 'playing' | 'failed'
 
+export interface UseSpeechOptions {
+  /**
+   * Called once an autoplay attempt has concluded — played to the end,
+   * failed, or was blocked by the browser — never for a manual pause. Hands-
+   * free mode uses this to know when it is safe to start listening again
+   * without picking up the assistant's own voice.
+   */
+  onSettled?: () => void
+}
+
 /**
  * Reads a piece of text aloud, fetching the audio once and reusing it.
  *
@@ -12,7 +22,11 @@ export type SpeechState = 'idle' | 'loading' | 'playing' | 'failed'
  * varies. A blocked autoplay leaves the control ready to press rather than
  * surfacing an error the user cannot act on.
  */
-export function useSpeech(text: string | undefined, autoPlay: boolean) {
+export function useSpeech(
+  text: string | undefined,
+  autoPlay: boolean,
+  { onSettled }: UseSpeechOptions = {},
+) {
   const [state, setState] = useState<SpeechState>('idle')
   const [error, setError] = useState<string | null>(null)
 
@@ -50,7 +64,10 @@ export function useSpeech(text: string | undefined, autoPlay: boolean) {
       urlRef.current = url
 
       const audio = new Audio(url)
-      audio.addEventListener('ended', () => setState('idle'))
+      audio.addEventListener('ended', () => {
+        setState('idle')
+        onSettled?.()
+      })
       audio.addEventListener('pause', () => setState('idle'))
       audioRef.current = audio
       return audio
@@ -66,9 +83,10 @@ export function useSpeech(text: string | undefined, autoPlay: boolean) {
       }
       setState('failed')
       setError(cause instanceof ApiError ? cause.message : 'Leximi me ze deshtoi.')
+      onSettled?.()
       return null
     }
-  }, [text])
+  }, [text, onSettled])
 
   const toggle = useCallback(async () => {
     const audio = audioRef.current
@@ -87,14 +105,23 @@ export function useSpeech(text: string | undefined, autoPlay: boolean) {
     } catch {
       // Blocked by the browser's autoplay policy, or interrupted.
       setState('idle')
+      onSettled?.()
     }
-  }, [load])
+  }, [load, onSettled])
 
   useEffect(() => {
-    if (!autoPlay || !text || attemptedRef.current) return
+    if (!autoPlay || attemptedRef.current) return
     attemptedRef.current = true
+
+    if (!text) {
+      // Nothing to play — settle immediately rather than leaving a caller
+      // that's waiting on this turn (hands-free mode) stuck forever.
+      onSettled?.()
+      return
+    }
+
     void toggle()
-  }, [autoPlay, text, toggle])
+  }, [autoPlay, text, toggle, onSettled])
 
   return { state, error, toggle }
 }

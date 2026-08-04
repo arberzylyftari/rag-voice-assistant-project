@@ -7,7 +7,7 @@ import {
 import { AudioLines } from '@/components/animate-ui/icons/audio-lines'
 import { LoaderCircle } from '@/components/animate-ui/icons/loader-circle'
 
-export type MicButtonState = 'idle' | 'recording' | 'processing'
+export type MicButtonState = 'idle' | 'recording' | 'processing' | 'speaking'
 
 interface MicButtonProps {
   state: MicButtonState
@@ -19,18 +19,23 @@ const LABELS: Record<MicButtonState, string> = {
   idle: 'Shtyp per te folur',
   recording: 'Ndalo regjistrimin',
   processing: 'Duke transkriptuar…',
+  speaking: 'Duke folur pergjigjen…',
 }
 
 /**
  * Push-to-talk control: press to start recording, press again to stop.
  *
- * Disabled while a transcription is in flight, so a second press cannot
- * start a new recording on top of one still being processed.
+ * Disabled while a transcription or answer is in flight, so a second press
+ * cannot start a new recording on top of one still being processed. `speaking`
+ * — hands-free mode reading the answer aloud — stays clickable: it is the only
+ * way to stop hands-free mode while the assistant is talking, since there is
+ * no live request to press it against.
  */
 export function MicButton({ state, onToggle }: MicButtonProps) {
   const label = LABELS[state]
   const isRecording = state === 'recording'
   const isProcessing = state === 'processing'
+  const isSpeaking = state === 'speaking'
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -43,7 +48,7 @@ export function MicButton({ state, onToggle }: MicButtonProps) {
         aria-pressed={isRecording}
         className="size-18 rounded-full [&_svg]:size-7"
       >
-        {isProcessing ? (
+        {isProcessing || isSpeaking ? (
           <LoaderCircle animate loop size={28} />
         ) : isRecording ? (
           <AudioLines animate loop size={28} />
