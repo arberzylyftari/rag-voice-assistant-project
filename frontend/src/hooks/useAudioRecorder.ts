@@ -30,12 +30,29 @@ export interface RecorderMessage {
   tone: 'error' | 'info'
 }
 
-/** Recording longer than this is stopped automatically, to cap upload size and cost. */
-const MAX_DURATION_MS = 60_000
+/**
+ * Recording longer than this is stopped automatically, to cap upload size
+ * and cost. Push-to-talk gets a short cap because a stuck-open recording
+ * there means the user forgot to press stop; hands-free gets a long one
+ * because it is meant to carry a real back-and-forth, and voice-activity
+ * detection — not this cap — is what normally ends a turn. This is only the
+ * backstop for when that detection does not fire.
+ */
+const PUSH_TO_TALK_MAX_DURATION_MS = 3 * 60_000
+const HANDS_FREE_MAX_DURATION_MS = 30 * 60_000
 
 /** Anything shorter or smaller than this is treated as silence, not speech. */
 const MIN_DURATION_MS = 700
 const MIN_BLOB_BYTES = 1024
+
+/** "3 minutash" / "1 minute" / "30 sekondash" — for the auto-stop message. */
+function describeDuration(ms: number): string {
+  const totalMinutes = Math.round(ms / 60_000)
+  if (totalMinutes >= 1) return totalMinutes === 1 ? '1 minute' : `${totalMinutes} minutash`
+
+  const totalSeconds = Math.round(ms / 1000)
+  return `${totalSeconds} sekondash`
+}
 
 /** User-facing messages. Albanian — this is product text. */
 const MESSAGES = {
@@ -50,7 +67,7 @@ const MESSAGES = {
     'Mikrofoni po perdoret nga nje aplikacion tjeter. Mbylle ate aplikacion dhe provo serish.',
   empty: 'Nuk u regjistrua asnje ze. Provo serish dhe fol me afer mikrofonit.',
   failed: 'Regjistrimi deshtoi. Provo serish.',
-  maxDuration: 'Regjistrimi u ndal automatikisht pas 60 sekondash.',
+  maxDuration: (ms: number) => `Regjistrimi u ndal automatikisht pas ${describeDuration(ms)}.`,
 } as const
 
 /** Pick a container the browser can actually record. Safari only offers mp4. */
@@ -94,6 +111,10 @@ export function useAudioRecorder() {
   const [message, setMessage] = useState<RecorderMessage | null>(null)
   const [elapsedMs, setElapsedMs] = useState(0)
   const [recording, setRecording] = useState<AudioRecording | null>(null)
+  // Which cap applies to the recording in progress — push-to-talk and
+  // hands-free use different ones. Idle shows push-to-talk's, since that is
+  // what a press of the mic button would start.
+  const [maxDurationMs, setMaxDurationMs] = useState(PUSH_TO_TALK_MAX_DURATION_MS)
 
   const recorderRef = useRef<MediaRecorder | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -215,6 +236,10 @@ export function useAudioRecorder() {
       })()
     }
 
+    const activeMaxDuration = options?.autoStop
+      ? HANDS_FREE_MAX_DURATION_MS
+      : PUSH_TO_TALK_MAX_DURATION_MS
+
     if (options?.autoStop) {
       // Hands-free mode: end the turn on a trailing pause rather than a
       // button press. Left running until `releaseStream` tears it down along
@@ -225,15 +250,16 @@ export function useAudioRecorder() {
     recorder.start()
     setStatus('recording')
     setElapsedMs(0)
+    setMaxDurationMs(activeMaxDuration)
 
     tickRef.current = setInterval(() => {
       setElapsedMs(Date.now() - startedAtRef.current)
     }, 200)
 
     autoStopRef.current = setTimeout(() => {
-      setMessage({ text: MESSAGES.maxDuration, tone: 'info' })
+      setMessage({ text: MESSAGES.maxDuration(activeMaxDuration), tone: 'info' })
       stop()
-    }, MAX_DURATION_MS)
+    }, activeMaxDuration)
 
     return true
   }, [releaseStream, stop])
@@ -259,6 +285,6 @@ export function useAudioRecorder() {
     stop,
     toggle,
     dismissMessage,
-    maxDurationMs: MAX_DURATION_MS,
+    maxDurationMs,
   }
 }
