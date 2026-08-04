@@ -77,13 +77,28 @@ export function isSilent({ rms, peak }: Loudness): boolean {
  * once the user has spoken and then paused, so a hands-free turn can end
  * itself instead of waiting for a button press.
  *
- * The threshold is reasoned from the same measurements documented above —
- * comfortably above the loudest recorded noise sample (0.00327) and below the
- * quietest recorded speech (0.075) — not an independent measurement of its
- * own. Live 100ms windows are burstier than a whole-clip average, so it sits
- * higher than the post-hoc RMS_THRESHOLD to avoid triggering on room noise.
+ * The threshold adapts to the room rather than using one fixed number. A
+ * value measured in one quiet room does not generalise: a noisier room (fan
+ * noise, echo, a laptop mic with more self-noise) can sit above a fixed
+ * threshold permanently, so "quiet again" is never observed and a turn never
+ * ends on its own — the recorder just runs until its maximum-duration cap.
+ * The first half-second of the stream instead estimates the room's ambient
+ * floor, and speech/quiet are judged relative to that floor, not to a number
+ * measured in a different room entirely.
  */
-const LIVE_SPEECH_THRESHOLD = 0.02
+const WARM_UP_SAMPLES = 5 // ~500ms at the sample interval below, to read the room before judging anything as speech.
+const NOISE_FLOOR_SMOOTHING = 0.05 // how quickly the floor estimate adapts during quiet stretches.
+const SPEECH_MULTIPLIER = 4 // RMS this many times the floor counts as speech starting.
+const QUIET_MULTIPLIER = 2 // RMS falling back to this many times the floor counts as quiet again — lower than the speech multiplier so the two do not flicker against each other around one shared value.
+
+/**
+ * Floor beneath the adaptive threshold, so a genuinely silent room — where
+ * the floor estimate itself is close to zero — does not become sensitive
+ * enough to trigger on a whisper of self-noise. Reasoned from the same
+ * measured bounds `RMS_THRESHOLD` above documents (loudest recorded noise
+ * 0.00327, quietest recorded speech 0.075), not an independent measurement.
+ */
+const MIN_SPEECH_THRESHOLD = 0.01
 
 /** A pause this long after speech has been heard ends the turn. */
 const SILENCE_HANGOVER_MS = 1200
@@ -93,7 +108,6 @@ const SAMPLE_INTERVAL_MS = 100
 export interface VoiceActivityOptions {
   /** Called once, when speech has been heard and then followed by a pause. */
   onSpeechEnd: () => void
-  speechThreshold?: number
   silenceHangoverMs?: number
 }
 
@@ -111,16 +125,12 @@ export interface VoiceActivityWatcher {
  *
  * Deliberately has no "nothing was ever said" timeout: if the user never
  * speaks, this simply keeps waiting. The recorder's own maximum-duration cap
- * is what ends that case, so a silent turn costs one message a minute rather
- * than a repeating one every few seconds.
+ * is what ends that case, so a silent turn costs one message rather than a
+ * repeating one every few seconds.
  */
 export function watchVoiceActivity(
   stream: MediaStream,
-  {
-    onSpeechEnd,
-    speechThreshold = LIVE_SPEECH_THRESHOLD,
-    silenceHangoverMs = SILENCE_HANGOVER_MS,
-  }: VoiceActivityOptions,
+  { onSpeechEnd, silenceHangoverMs = SILENCE_HANGOVER_MS }: VoiceActivityOptions,
 ): VoiceActivityWatcher {
   const context = new AudioContext()
   const source = context.createMediaStreamSource(stream)
@@ -129,6 +139,8 @@ export function watchVoiceActivity(
   source.connect(analyser)
 
   const samples = new Float32Array(analyser.fftSize)
+  let sampleCount = 0
+  let noiseFloor = 0
   let hasSpoken = false
   let silenceStartedAt: number | null = null
   let settled = false
@@ -141,6 +153,18 @@ export function watchVoiceActivity(
     let sumOfSquares = 0
     for (let i = 0; i < samples.length; i += 1) sumOfSquares += samples[i] * samples[i]
     const rms = Math.sqrt(sumOfSquares / samples.length)
+    sampleCount += 1
+
+    if (sampleCount <= WARM_UP_SAMPLES) {
+      // Seed the floor as a running average of the warm-up window, before
+      // judging anything as speech — avoids a startup click or pop being
+      // mistaken for the room's baseline.
+      noiseFloor += (rms - noiseFloor) / sampleCount
+      return
+    }
+
+    const speechThreshold = Math.max(MIN_SPEECH_THRESHOLD, noiseFloor * SPEECH_MULTIPLIER)
+    const quietThreshold = Math.max(MIN_SPEECH_THRESHOLD / 2, noiseFloor * QUIET_MULTIPLIER)
 
     if (rms >= speechThreshold) {
       hasSpoken = true
@@ -148,7 +172,15 @@ export function watchVoiceActivity(
       return
     }
 
+    if (rms < quietThreshold) {
+      // Only adapt the floor during quiet stretches — otherwise a long
+      // sentence would drag the floor upward and make the room seem noisier
+      // than it actually is once the user stops talking.
+      noiseFloor += (rms - noiseFloor) * NOISE_FLOOR_SMOOTHING
+    }
+
     if (!hasSpoken) return // still waiting for the user to start talking
+    if (rms >= quietThreshold) return // between quiet and speech — ambiguous, keep waiting
 
     silenceStartedAt ??= Date.now()
 
